@@ -1,0 +1,16 @@
+node_modules/
+.next/
+out/
+dist/
+.env*
+!.env.example
+.secrets/
+.venv/
+__pycache__/
+.pytest_cache/
+.gltest_cache/
+test-results/
+playwright-report/
+*.tsbuildinfo
+*.log
+/TASKS.md

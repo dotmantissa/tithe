@@ -1,0 +1,16 @@
+{
+  "name": "tithe",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --hostname 0.0.0.0",
+    "build": "next build",
+    "start": "next start --hostname 0.0.0.0",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:migrate": "tsx --env-file=.env.local scripts/migrate.ts",
+    "deploy:contracts": "tsx --env-file=.env.local scripts/deploy.ts",
+    "index": "tsx --env-file=.env.local scripts/index.ts"
+  }
+}
