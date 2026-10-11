@@ -8,6 +8,7 @@ import { read } from '@/lib/chain';
 import { submit, refreshOperation } from '@/lib/operations';
 import { actionSchema } from '@/lib/schemas';
 export const runtime='nodejs';
+export const maxDuration=300;
 export const dynamic='force-dynamic';
 const tools=[
   {name:'search_works',description:'Search registered works and their public licence terms.',inputSchema:{type:'object',properties:{query:{type:'string'},kind:{type:'string',enum:['text','image','']}}}},

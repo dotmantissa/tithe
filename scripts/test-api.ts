@@ -21,7 +21,9 @@ const sql=database();
 await sql`INSERT INTO tithe_keys(id,subject,name,digest,prefix) VALUES(${id},${subject},'Ephemeral API verification',${digest(token)},${token.slice(0,14)})`;
 const auth={Authorization:'Bearer '+token,'Content-Type':'application/json'};
 try{
-  let response=await request(base+'/api/account');assert.equal(response.status,401);
+  let response=await request(base+'/api/maintenance');assert.equal(response.status,401);
+  if(process.env.CRON_SECRET){response=await request(base+'/api/maintenance',{headers:{Authorization:'Bearer '+process.env.CRON_SECRET}});assert.equal(response.status,200);assert.equal((await response.json()).indexed,true);}
+  response=await request(base+'/api/account');assert.equal(response.status,401);
   response=await request(base+'/api/account',{headers:auth});assert.equal(response.status,200);
   const account=await response.json();assert.equal(account.address,accountFor(subject).address);
   response=await request(base+'/api/operations/'+randomUUID(),{headers:auth});assert.equal(response.status,404);

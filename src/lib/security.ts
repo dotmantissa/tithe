@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { PrivyClient } from '@privy-io/server-auth';
 import { database } from './db';
 import { AppError } from './errors';
@@ -48,4 +48,11 @@ export async function limit(scope: string, maximum = 30, periodMs = 60000) {
   const window = Math.floor(Date.now() / periodMs);
   const rows = await database()`INSERT INTO tithe_limits(scope,bucket) VALUES(${scope},${window}) ON CONFLICT(scope,bucket) DO UPDATE SET count=tithe_limits.count+1 RETURNING count`;
   if (Number(rows[0].count) > maximum) throw new AppError('A little too fast. Please try again in a minute.', 429);
+}
+
+export function authorizeMaintenance(request:Request){
+  const secret=process.env.CRON_SECRET;
+  const provided=Buffer.from(request.headers.get('authorization')||'');
+  const expected=Buffer.from(secret?'Bearer '+secret:'');
+  if(!secret||provided.length!==expected.length||!timingSafeEqual(provided,expected))throw new AppError('Unauthorized.',401);
 }

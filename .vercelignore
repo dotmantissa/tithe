@@ -1,0 +1,16 @@
+.git
+.vercel
+.next
+node_modules
+.env*
+.secrets
+.venv
+TASKS.md
+__pycache__
+.pytest_cache
+.gltest_cache
+artifacts
+playwright-report
+test-results
+*.log
+*.tsbuildinfo

@@ -5,7 +5,7 @@ Checked on 11 October 2026.
 | Check | Result |
 | :--- | :--- |
 | Direct contract tests | 47 passed across registry, desk, court and transfers |
-| Backend tests | 49 passed |
+| Backend tests | 53 passed |
 | Production browser tests | 10 passed |
 | ESLint and TypeScript | Passed |
 | GenVM lint | All three contracts passed |
@@ -25,4 +25,4 @@ Browser checks used the production server and the real Privy modal. They covered
 
 Direct tests substitute external calls. Live text tests use actual web, model and embeddings runners. Image panel input and validation are covered by direct tests; live image consensus has not been exercised. Time dependent fee release and settlement use direct VM time changes. The live test did not pretend that two days had passed.
 
-The Node standalone server was started and exercised. Docker is unavailable in this environment, so the container build has not been run. Public web hosting remains to configure. The most recent successful runtime audit found zero high and critical advisories and 27 moderate upstream advisories; a later npm audit endpoint request failed, so it supplied no newer result.
+The Node standalone server was started and exercised. Docker is unavailable in this environment, so the container build has not been run. Vercel production deployment is being verified separately; the web project is linked to the same GitHub repository. The most recent successful runtime audit found zero high and critical advisories and 27 moderate upstream advisories; a later npm audit endpoint request failed, so it supplied no newer result.

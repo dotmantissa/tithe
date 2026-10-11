@@ -1,7 +1,7 @@
-import { describe,it,expect } from 'vitest';
+import { describe,it,expect,afterEach,vi } from 'vitest';
 import { artifactURL,isPublicAddress } from '../../src/lib/artifacts';
 import { actionSchema } from '../../src/lib/schemas';
-import { checkOrigin,authenticate,digest,readJSON } from '../../src/lib/security';
+import { checkOrigin,authenticate,digest,readJSON,authorizeMaintenance } from '../../src/lib/security';
 import { executionSucceeded,operationState,normalize } from '../../src/lib/chain';
 import { failure,AppError } from '../../src/lib/errors';
 
@@ -53,4 +53,12 @@ describe('consensus status handling',()=>{
   it('does not confirm a canceled transaction',()=>expect(operationState({statusName:'CANCELED',txExecutionResult:1} as Parameters<typeof operationState>[0])).toBe('FAILED'));
   it('decodes a numeric accepted Studio status',()=>expect(operationState({status:5,txExecutionResult:1} as Parameters<typeof operationState>[0])).toBe('ACCEPTED'));
   it('keeps a successful finalized transaction',()=>expect(operationState({statusName:'FINALIZED',txExecutionResult:1} as Parameters<typeof operationState>[0])).toBe('FINALIZED'));
+});
+
+describe('scheduled maintenance authorization',()=>{
+  afterEach(()=>vi.unstubAllEnvs());
+  it('refuses an unconfigured secret',()=>{vi.stubEnv('CRON_SECRET','');expect(()=>authorizeMaintenance(new Request('https://tithe.example/api/maintenance',{headers:{Authorization:'Bearer undefined'}}))).toThrow();});
+  it('refuses missing or incorrect bearer credentials',()=>{vi.stubEnv('CRON_SECRET','a-long-private-maintenance-value');for(const token of ['', 'Bearer wrong'])expect(()=>authorizeMaintenance(new Request('https://tithe.example/api/maintenance',{headers:{Authorization:token}}))).toThrow();});
+  it('rejects multibyte credentials without an internal comparison error',()=>{vi.stubEnv('CRON_SECRET','a'.repeat(32));expect(()=>authorizeMaintenance(new Request('https://tithe.example/api/maintenance',{headers:{Authorization:'Bearer '+ 'ü'.repeat(32)}}))).toThrow('Unauthorized.');});
+  it('accepts the configured scheduler secret',()=>{vi.stubEnv('CRON_SECRET','a-long-private-maintenance-value');expect(()=>authorizeMaintenance(new Request('https://tithe.example/api/maintenance',{headers:{Authorization:'Bearer a-long-private-maintenance-value'}}))).not.toThrow();});
 });

@@ -14,3 +14,6 @@ playwright-report/
 *.tsbuildinfo
 *.log
 /TASKS.md
+
+.vercel/
+.vercel

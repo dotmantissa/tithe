@@ -15,7 +15,7 @@ const requestExample=`curl "$TITHE_URL/api/actions" \
 const mcpExample=`{
   "mcpServers": {
     "tithe": {
-      "url": "https://YOUR_TITHE_HOST/api/mcp",
+      "url": "${process.env.NEXT_PUBLIC_APP_URL||'http://localhost:3000'}/api/mcp",
       "headers": {
         "Authorization": "Bearer YOUR_TITHE_API_KEY"
       }
