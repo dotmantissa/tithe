@@ -11,6 +11,45 @@
     "test": "vitest run",
     "db:migrate": "tsx --env-file=.env.local scripts/migrate.ts",
     "deploy:contracts": "tsx --env-file=.env.local scripts/deploy.ts",
-    "index": "tsx --env-file=.env.local scripts/index.ts"
+    "index": "tsx --env-file=.env.local scripts/index.ts",
+    "test:contracts": "PYTHONPATH=.venv/vendor python3 -m pytest tests/direct -v",
+    "test:studio": "tsx --env-file=.env.local scripts/test-studio.ts",
+    "test:browser": "playwright test",
+    "test:api": "tsx --env-file=.env.local scripts/test-api.ts"
+  },
+  "dependencies": {
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/source-sans-3": "^5.3.1",
+    "@neondatabase/serverless": "^1.2.0",
+    "@privy-io/react-auth": "^3.48.1",
+    "@privy-io/server-auth": "^1.32.5",
+    "genlayer-js": "^1.1.8",
+    "lucide-react": "^1.55.0",
+    "next": "^16.4.0",
+    "next-themes": "^0.4.6",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "server-only": "^0.0.1",
+    "undici": "^6.29.0",
+    "viem": "^2.56.5",
+    "zod": "^4.6.6"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.0",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.4.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.11"
+  },
+  "type": "module",
+  "overrides": {
+    "ws": "^8.21.0"
+  },
+  "engines": {
+    "node": ">=22.13.0"
   }
 }

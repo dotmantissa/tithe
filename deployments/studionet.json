@@ -1,0 +1,38 @@
+{
+  "network": "studionet",
+  "chainId": 61999,
+  "contracts": {
+    "registry": "0xD531dAd88F80807185327c9F45e3a64671543de7",
+    "desk": "0xE124f3F751d2D97CDCF434481e58A03E61e346d9",
+    "court": "0x5150343Ad7599FCE2453F10f1EA1C71e7041fE1e"
+  },
+  "transactions": {
+    "registry": "0x6b65e5d7cacd4e83c774d38f5a30f4e4927721cbe7090527c4b28abc5071397a",
+    "desk": "0x2e7f86c107e140e23f51e9ece9642cb16180f51b020b6677f2cf71fd855f5adc",
+    "court": "0x61920381cd4daa002bae4a0fcd0b89da907d9ca00112d904d860988217fc0feb"
+  },
+  "previous_deployments": [
+    {
+      "contracts": {
+        "registry": "0x7413a9eb7966b1f38415CEe7C69539Ea26063C1F",
+        "desk": "0x710033E19c9CC53072754A143DEdB2336111EE3C",
+        "court": "0x93AD814B0e3820F1cB7998Ea8B610674c74986E2"
+      },
+      "transactions": {
+        "registry": "0x444c0e6239ea848bacaafde3ab4e5a13ebb630860ca20abdf8a91032c3bac46f",
+        "desk": "0xdadf9183c0626f61e3bd3f040b6d4f80a0d0619454ab4cf0b6a1a8085d318049",
+        "court": "0x4266d8a13e2e3a0b2157079884e0ffffff31fbf9428df87c48dec28bd9fdc364"
+      },
+      "reason": "Address serialization corrected before any production registrations"
+    },
+    {
+      "contracts": {
+        "court": "0xeFa8C73C45700138048a139D51e973b45783899F"
+      },
+      "transactions": {
+        "court": "0xb1b079db648b5035e239449f1a5429cb6876dfdc632d08949753deb602270795"
+      },
+      "reason": "Bonded contract review added for Studio; no app data registered"
+    }
+  ]
+}
