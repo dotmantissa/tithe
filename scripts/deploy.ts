@@ -2,7 +2,7 @@ import { createClient, createAccount } from 'genlayer-js';
 import { TransactionStatus, type Hash } from 'genlayer-js/types';
 import { studionet } from 'genlayer-js/chains';
 import { readFile, writeFile } from 'node:fs/promises';
-import { executionSucceeded, normalize } from '../src/lib/chain';
+import { executionSucceeded } from '../src/lib/chain';
 
 const key = process.env.GENLAYER_DEPLOYER_KEY;
 if (!key) throw new Error('Missing deployment key');
@@ -25,7 +25,7 @@ for (const [name, file] of [['registry', 'work_registry'], ['desk', 'licence_des
   }
   const tx = await client.waitForTransactionReceipt({ hash: hash as Hash, status: TransactionStatus.ACCEPTED, interval: 6000, retries: 100 });
   if (!executionSucceeded(tx)) {
-    console.log(normalize(tx));
+    console.log({name,hash,status:tx.statusName||tx.status,execution:tx.txExecutionResultName});
     throw new Error(`${name}: execution failed; inspect receipt before resubmitting`);
   }
   const address = tx.to_address || tx.recipient || (tx.data?.contractAddress as string);

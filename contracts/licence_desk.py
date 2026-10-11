@@ -23,6 +23,18 @@ def public_url(url: str) -> None:
     require(bool(host) and "." in host and "@" not in url and not host.startswith(("127.", "10.", "192.168.", "169.254.", "172.", "0.")) and host not in ("localhost", "metadata.google.internal") and "[" not in host, "Private network URLs are not allowed")
 
 
+def is_animated(raw: bytes) -> bool:
+    png = raw.startswith(b"\x89PNG\r\n\x1a\n")
+    offset = 8 if png else 12
+    while offset + 8 <= len(raw):
+        size = int.from_bytes(raw[offset:offset + 4], "big") if png else int.from_bytes(raw[offset + 4:offset + 8], "little")
+        kind = raw[offset + 4:offset + 8] if png else raw[offset:offset + 4]
+        if kind == (b"acTL" if png else b"ANIM"):
+            return True
+        offset += size + 12 if png else size + 8 + (size % 2)
+    return False
+
+
 def fetch_artifact(url: str, content_hash: str) -> dict:
     public_url(url)
     response = gl.nondet.web.get(url)
@@ -34,6 +46,7 @@ def fetch_artifact(url: str, content_hash: str) -> dict:
     is_image = raw.startswith((b"\x89PNG\r\n\x1a\n", b"\xff\xd8\xff", b"RIFF"))
     if is_image:
         require(not raw.startswith(b"RIFF") or raw[8:12] == b"WEBP", "Only PNG, JPEG and WebP still images are supported")
+        require(not (raw.startswith(b"\x89PNG") or raw.startswith(b"RIFF")) or not is_animated(raw), "Animated images are not supported")
         return {"kind": "image", "body": raw, "text": ""}
     try:
         text = raw.decode("utf-8")

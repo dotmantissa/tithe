@@ -152,3 +152,13 @@ def test_appeal_access_fee_and_deadline(direct_deploy,direct_vm,direct_alice,dir
     direct_vm.value=200
     with direct_vm.expect_revert('Appeal window closed'):
         c.appeal_claim(key)
+
+@pytest.mark.parametrize('left,right,agrees',[(0,1000,True),(0,1001,False),(200000,210526,True),(200000,210527,False)])
+def test_distance_tolerance_boundaries(direct_deploy,direct_vm,direct_alice,left,right,agrees):
+    import sys
+    c=court(direct_deploy,direct_vm,direct_alice)
+    compare=sys.modules[c.__module__].same_ruling
+    record={'decision':'USE','clause':'C1','damages_band':'LOW','policy_hash':'','distance_ppm':left}
+    assert compare(record,{**record,'distance_ppm':right}) is agrees
+    assert compare({**record,'distance_ppm':right},record) is agrees
+    assert not compare(record,{**record,'policy_hash':'changed','distance_ppm':right})

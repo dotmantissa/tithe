@@ -1,0 +1,33 @@
+{
+  "network": "GenLayer Studio",
+  "checked_at": "2026-10-11T20:36:14.193Z",
+  "checks": {
+    "registry": {
+      "address": "0x5D3B1286e396D24045Fe52C2B7E6031977199D11",
+      "transaction": "0x0099d2c2a6981efd9f362436af4c2afa253abbcd48de104b928bece5423e7c2e",
+      "source_sha256": "d6240a8afef50203d4276ec60fb9476ca1fdfcd345045c95dd3e220a0521be5b",
+      "source_matches": true,
+      "schema_verified": true,
+      "execution": "succeeded",
+      "records": 0
+    },
+    "desk": {
+      "address": "0xAc75A90E0F349Bb518C965Ea8d9414D9CAfa5D86",
+      "transaction": "0xbf0776b880ab53c77034ef9830f2ff1c2820f33fb349aa08d437786feec9ac66",
+      "source_sha256": "3d20dc2d32ef3c6d666f4adde3841e0cdaa9a4583b2f96353ebea1005146bf79",
+      "source_matches": true,
+      "schema_verified": true,
+      "execution": "succeeded",
+      "records": 0
+    },
+    "court": {
+      "address": "0x75c315a4E961714505dC5195F18c5a43d158726C",
+      "transaction": "0x334b184f934b30fc3030d443d38820509fce8ebdd75ee95d245aeea34e5186c3",
+      "source_sha256": "bd9ca859356cfe206279a85e76c6f8d612899e130cbed36da9521748333c41c7",
+      "source_matches": true,
+      "schema_verified": true,
+      "execution": "succeeded",
+      "records": 0
+    }
+  }
+}
