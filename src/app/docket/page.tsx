@@ -1,0 +1,11 @@
+'use client';
+import Link from 'next/link';
+import { Scale, BookOpen } from 'lucide-react';
+import { useResource, Loading, LoadError, date, short } from '@/components/ui';
+import type { Claim } from '@/lib/types';
+export const verdict=(decision?:string)=>decision==='USE'?'Use outside the terms':decision==='NO_USE'?'No use established':decision==='DERIVATIVE_WITHIN_TERMS'?'Use within the terms':'Awaiting a hearing';
+export const claimStatus=(status:string)=>({AWAITING_RESPONSE:'Waiting for a response',READY:'Ready for a hearing',RULED:'Decision recorded',SETTLED:'Settled',CLOSED_WITHOUT_RULING:'Closed without a ruling'}[status]||status);
+export default function DocketPage(){
+  const records=useResource<{claims:Claim[]}>('docket');
+  return <><div className="page-head wrap"><h1>A fair hearing.<br/>An open record.</h1><p>The work, the terms, and what the panel made of it. Out in the open, where a good decision belongs.</p></div><section className="page-body wrap"><div className="docket-intro"><Scale size={28} strokeWidth={1.4}/><p>These are private arbitration records. Each ruling applies to the committed evidence and the terms in force at the stated time of use. It is not a legal court judgment.</p></div><div className="section-heading"><h2>The public docket</h2><span className="mono small">{records.data?records.data.claims.length+' records':'Live records'}</span></div>{records.loading?<Loading/>:records.error?<LoadError message={records.error} retry={records.reload}/>:records.data?.claims.length?records.data.claims.map(claim=><Link key={claim.claim_id} href={'/docket/'+claim.claim_id} className="docket-row"><Scale size={28} strokeWidth={1.4}/><div><h3>{verdict(claim.ruling?.decision)}</h3><p>Work {short(claim.work_id)} · Filed {date(claim.filed_at)} · Terms version {claim.terms_version}</p></div><span className={'status '+(claim.status==='SETTLED'?'positive':'')}>{claimStatus(claim.status)}</span></Link>):<div className="empty-state"><BookOpen size={35} strokeWidth={1.2}/><h3>A quiet docket is a good thing.</h3><p>No claims have been recorded yet. When someone needs a hearing, the evidence and decision will live here.</p><Link href="/works" className="button secondary">Explore the register</Link></div>}</section></>;
+}
