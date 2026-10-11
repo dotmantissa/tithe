@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --hostname 0.0.0.0",
     "build": "next build",
-    "start": "next start --hostname 0.0.0.0",
+    "start": "node scripts/start.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -15,7 +15,10 @@
     "test:contracts": "PYTHONPATH=.venv/vendor python3 -m pytest tests/direct -v",
     "test:studio": "tsx --env-file=.env.local scripts/test-studio.ts",
     "test:browser": "playwright test",
-    "test:api": "tsx --env-file=.env.local scripts/test-api.ts"
+    "test:api": "tsx --env-file=.env.local scripts/test-api.ts",
+    "verify:deployment": "tsx --env-file=.env.local scripts/verify-deployment.ts",
+    "lint:contracts": "genvm-lint check contracts/work_registry.py && genvm-lint check contracts/licence_desk.py && genvm-lint check contracts/infringement_court.py",
+    "reconcile": "tsx --env-file=.env.local scripts/reconcile.ts"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.3.0",

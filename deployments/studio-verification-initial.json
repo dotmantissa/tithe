@@ -1,0 +1,89 @@
+{
+  "network": "GenLayer Studio",
+  "checked_at": "2026-10-11T20:26:28.274Z",
+  "isolated_contracts": {
+    "registry": "0x64f7F44e8504790627263c945c4fF7463Df79a1e",
+    "desk": "0x8543689BF5d523356617034618E9fA418F00Df49",
+    "court": "0x9eADe5F12F7752930f6Ae72DbCFfF6Dae0A3A46a"
+  },
+  "checks": {
+    "deploy:registry": {
+      "hash": "0x06b3cc8bce87da6c47208c48d3806eeb1c85040e9f442b01d08f7ebe04c2a1ef",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "deploy:desk": {
+      "hash": "0xc794fe5a3667b13942bbf908bf00ffff3f6a4e0d9a4ba82dea472263539f4b34",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "deploy:court": {
+      "hash": "0x3a6c279ac8ac5479a0a7ffb6c942ceae92c5a54e5d0cd21aab9aebb9cf25a653",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "register": {
+      "hash": "0x926d69c818bd6552a3c90eb56d139f67aa154301b4d23d517ccc894679060ac0",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "approve": {
+      "hash": "0x1300523fcc79a68d23be287827d1219c5f7f7a6ecfd7952ecbaba7b182557efe",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "claim": {
+      "hash": "0xb85b15d0520f9f0e72dde13dc4398b510d9b9312767c97c41b06fd8fe72826d9",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "respond": {
+      "hash": "0x9969b5fc54f48775fcd1bd2f5ca0405add8db9fd6dd4dff8ec2fc879cbe207f1",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "rule": {
+      "hash": "0x935fdffa0b9a4abb4b32968aaba0d448c2f298164756c554e3ec0e0721fc9e83",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "appeal": {
+      "hash": "0x7c93ba59b778dd02fa998750a8942ad9248802e2e8e288120bbbc6cee5082863",
+      "status": 5,
+      "execution": "succeeded"
+    },
+    "review": {
+      "hash": "0x023894fc29266d75850f2adf8b3bab9073e98ec3e00f944fd14ce7c3587c5600",
+      "status": 5,
+      "execution": "succeeded"
+    },
+    "terms": {
+      "hash": "0xfe971eaf81fb17ec08a2438ae2ce2c97c62ab97c78d596668cc008e8fa60514f",
+      "status": 5,
+      "execution": "succeeded"
+    },
+    "refuse": {
+      "hash": "0x48c3f170dd5f6bbbece77d6a724a679fede4e81d19d967599735baaa69c2ef37",
+      "status": 5,
+      "execution": "succeeded"
+    },
+    "withdraw": {
+      "hash": "0x53d67593d4c79a9b93bcb2e5a88d1c151281669b2197d505ca6523a188c785b3",
+      "status": 7,
+      "execution": "succeeded"
+    }
+  },
+  "ruling": {
+    "clause": "C1",
+    "damages_band": "NONE",
+    "decision": "DERIVATIVE_WITHIN_TERMS",
+    "distance_ppm": 0,
+    "policy_hash": "",
+    "reason": "The source and output are identical, establishing use of the registered example, but clause C1 expressly permits research, quotation, copying, and commercial use of the entire registered example without attribution. The licence presented was approved under C1 for research by quoting the entire published example, which matches the described use. No contrary registered term limits this use, so the established use is permitted."
+  },
+  "notes": [
+    "All web and model calls ran on the real network.",
+    "No sample work was registered in the application contracts.",
+    "Time gated settlement is covered by direct tests; live settlement waits two days."
+  ]
+}

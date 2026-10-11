@@ -11,11 +11,13 @@ import type { Work, Licence, Claim } from '../src/lib/types';
 
 type State={contracts:Record<string,`0x${string}`>;transactions:Record<string,Hash>;signed:Record<string,`0x${string}`>;source?:{url:string;hash:string};results:Record<string,unknown>};
 await mkdir('.secrets',{recursive:true});
-const statePath='.secrets/studio-test-state.json';
+const run=process.env.STUDIO_TEST_RUN||'v1';
+if(!/^[a-zA-Z0-9_]{1,40}$/.test(run))throw new Error('Invalid test run identifier');
+const statePath='.secrets/studio-test-state'+(run==='v1'?'':'-'+run)+'.json';
 let state:State;
 try {state=JSON.parse(await readFile(statePath,'utf8'));}catch{state={contracts:{},transactions:{},signed:{},results:{}};}
 async function save(){await writeFile(statePath+'.tmp',JSON.stringify(state,null,2)+'\n',{mode:0o600});await rename(statePath+'.tmp',statePath);}
-const creator=accountFor('tithe:integration:creator:v1'),lab=accountFor('tithe:integration:lab:v1');
+const creator=accountFor('tithe:integration:creator:'+run),lab=accountFor('tithe:integration:lab:'+run);
 function clientFor(who:typeof creator,operation:string){
   const sign=who.signTransaction;
   return createClient({chain:studionet,account:{...who,signTransaction:async(...args:Parameters<typeof sign>)=>{
@@ -41,6 +43,7 @@ async function receipt(operation:string,final=false){
 }
 async function deploy(name:string,file:string,args:CalldataEncodable[]){
   const operation='deploy:'+name;
+  if(state.contracts[name]&&state.results[operation])return state.contracts[name];
   if(!state.transactions[operation]){
     console.log('Deploying isolated '+name+' test contract');
     await clientFor(creator,operation).deployContract({code:await readFile('contracts/'+file+'.py','utf8'),args});
@@ -54,6 +57,7 @@ async function deploy(name:string,file:string,args:CalldataEncodable[]){
 }
 async function call<T>(name:string,method:string,args:CalldataEncodable[]=[]){return normalize<T>(await reader.readContract({address:state.contracts[name],functionName:method,args}));}
 async function write(operation:string,who:typeof creator,name:string,method:string,args:CalldataEncodable[]=[],value=0n){
+  if(state.results[operation])return;
   if(!state.transactions[operation]){
     console.log('Submitting '+operation);
     await clientFor(who,operation).writeContract({address:state.contracts[name],functionName:method,args,value});
@@ -97,6 +101,8 @@ if(!state.transactions.withdraw)assert.equal(credit.credit_atto,'100');
 await write('withdraw',lab,'desk','withdraw');
 await receipt('withdraw',true);
 assert.equal((await call<{credit_atto:string}>('desk','get_account',[lab.address])).credit_atto,'0');
-const reports={network:'GenLayer Studio',checked_at:new Date().toISOString(),isolated_contracts:state.contracts,checks:state.results,ruling:claims[0].ruling,notes:['All web and model calls ran on the real network.','No sample work was registered in the application contracts.','Time gated settlement is covered by direct tests; live settlement waits two days.']};
+const sourceHashes:Record<string,string>={};
+for(const [name,file] of [['registry','work_registry'],['desk','licence_desk'],['court','infringement_court']]){const local=await readFile('contracts/'+file+'.py','utf8');assert.equal(await reader.getContractCode(state.contracts[name]),local);sourceHashes[name]=createHash('sha256').update(local).digest('hex');}
+const reports={source_hashes:sourceHashes,network:'GenLayer Studio',checked_at:new Date().toISOString(),isolated_contracts:state.contracts,checks:state.results,ruling:claims[0].ruling,notes:['All web and model calls ran on the real network.','No sample work was registered in the application contracts.','Time gated settlement is covered by direct tests; live settlement waits two days.']};
 await writeFile('deployments/studio-verification.json',JSON.stringify(reports,null,2)+'\n');
 console.log('Studio integration checks passed: registry, live licensing, refusal refund, real ONNX embeddings, bonded review, and finalized withdrawal.');

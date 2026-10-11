@@ -1,6 +1,7 @@
 import type { NextConfig } from 'next';
 const config: NextConfig = {
   poweredByHeader: false,
+  output: 'standalone',
   serverExternalPackages: ['@privy-io/server-auth'],
   async headers() {
     return [{ source: '/:path*', headers: [

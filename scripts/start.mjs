@@ -1,0 +1,11 @@
+import { cp } from 'node:fs/promises';
+import { spawn } from 'node:child_process';
+import nextEnv from '@next/env';
+nextEnv.loadEnvConfig(process.cwd());
+await cp('public','.next/standalone/public',{recursive:true});
+await cp('.next/static','.next/standalone/.next/static',{recursive:true});
+const serverEnvironment={...process.env,HOSTNAME:process.env.TITHE_HOST||'0.0.0.0'};
+delete serverEnvironment.GENLAYER_DEPLOYER_KEY;
+const server=spawn(process.execPath,['.next/standalone/server.js'],{stdio:'inherit',env:serverEnvironment});
+for(const signal of ['SIGINT','SIGTERM'])process.on(signal,()=>server.kill(signal));
+server.on('exit',code=>{process.exitCode=code||0;});
