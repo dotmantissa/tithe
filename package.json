@@ -17,7 +17,7 @@
     "test:browser": "playwright test",
     "test:api": "tsx --env-file=.env.local scripts/test-api.ts",
     "verify:deployment": "tsx --env-file=.env.local scripts/verify-deployment.ts",
-    "lint:contracts": "python3 scripts/lint-contracts.py",
+    "lint:contracts": "PYTHONPATH=.venv/vendor python3 scripts/lint-contracts.py",
     "reconcile": "tsx --env-file=.env.local scripts/reconcile.ts"
   },
   "dependencies": {

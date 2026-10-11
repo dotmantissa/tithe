@@ -90,7 +90,7 @@ npx playwright install chromium
 npm run test:browser
 ```
 
-The contract tools select pure Python protobuf to match the packaged GenVM dependency. This avoids native protobuf import failures on a fresh machine.
+The contract tools load the host's pure Python protobuf before the GenVM SDK. This keeps a native extension from loading against a different packaged protobuf version on a fresh machine.
 
 The direct contract tests substitute web, model, and embedding calls to check access, validation, funds, versions, and validator agreement quickly. They are not evidence that a real model reached consensus.
 
