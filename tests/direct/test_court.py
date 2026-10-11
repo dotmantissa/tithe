@@ -97,3 +97,58 @@ def test_invalid_damages_cannot_move_money(direct_deploy,direct_vm,direct_alice,
     with direct_vm.expect_revert('Invalid damages'):
         c.rule(key)
     assert c.get_claim(key)['status']=='READY'
+
+
+@pytest.mark.parametrize('appealer,final_decision,final_band,alice_credit,bob_credit',[
+ ('respondent','USE','HIGH',400,0),
+ ('respondent','DERIVATIVE_WITHIN_TERMS','NONE',100,300),
+ ('claimant','USE','HIGH',200,200),
+])
+def test_bonded_appeal_preserves_history_and_conserves_funds(direct_deploy,direct_vm,direct_alice,direct_bob,external_views,appealer,final_decision,final_band,alice_credit,bob_credit):
+    work,_=external_views
+    c=court(direct_deploy,direct_vm,direct_alice)
+    key=claim(c,work,direct_bob)
+    direct_vm.sender=direct_bob
+    c.respond(key)
+    direct_vm.mock_llm(r'.*',json.dumps({'decision':'USE','clause':'C2','damages_band':'HIGH','reason':'The output uses the work outside the published terms.'}))
+    c.rule(key)
+    direct_vm.sender=direct_bob if appealer=='respondent' else direct_alice
+    direct_vm.value=200
+    c.appeal_claim(key)
+    assert c.get_claim(key)['status']=='READY'
+    assert c.get_claim(key)['appeals'][0]['previous_ruling']['decision']=='USE'
+    assert c.get_account(('0x'+direct_bob.hex()))['escrow_atto']=='400'
+    with direct_vm.expect_revert('open to network appeal'):
+        c.settle(key)
+    direct_vm.clear_mocks()
+    from conftest import SOURCE
+    direct_vm.mock_web(r'https://example.org/.*',{'status':200,'body':SOURCE})
+    direct_vm.mock_llm(r'.*',json.dumps({'decision':final_decision,'clause':'C2','damages_band':final_band,'reason':'A fresh panel has assessed the same committed artifacts.'}))
+    c.rule(key)
+    direct_vm.warp('2026-01-04T12:00:00Z')
+    c.settle(key)
+    assert c.get_account(('0x'+direct_alice.hex()))['credit_atto']==str(alice_credit)
+    assert c.get_account(('0x'+direct_bob.hex()))['credit_atto']==str(bob_credit)
+    assert c.get_account(('0x'+direct_bob.hex()))['escrow_atto']=='0'
+
+
+def test_appeal_access_fee_and_deadline(direct_deploy,direct_vm,direct_alice,direct_bob,direct_charlie,external_views):
+    work,_=external_views
+    c=court(direct_deploy,direct_vm,direct_alice)
+    key=claim(c,work,direct_bob)
+    direct_vm.sender=direct_bob
+    c.respond(key)
+    direct_vm.mock_llm(r'.*',json.dumps({'decision':'USE','clause':'C2','damages_band':'LOW','reason':'The output omitted the required creator attribution.'}))
+    c.rule(key)
+    direct_vm.sender=direct_charlie
+    direct_vm.value=200
+    with direct_vm.expect_revert('Only a party'):
+        c.appeal_claim(key)
+    direct_vm.sender=direct_bob
+    direct_vm.value=100
+    with direct_vm.expect_revert('escalating appeal bond'):
+        c.appeal_claim(key)
+    direct_vm.warp('2026-01-04T12:00:00Z')
+    direct_vm.value=200
+    with direct_vm.expect_revert('Appeal window closed'):
+        c.appeal_claim(key)

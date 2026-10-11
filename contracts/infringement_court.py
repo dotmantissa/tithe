@@ -74,7 +74,7 @@ from genlayer_embeddings import SentenceTransformer, EuclideanDistanceSquared
 
 
 def same_ruling(leader: dict, validator: dict) -> bool:
-    if any(leader[k] != validator[k] for k in ("decision", "clause", "damages_band")):
+    if any(leader[k] != validator[k] for k in ("decision", "clause", "damages_band", "policy_hash")):
         return False
     left, right = leader["distance_ppm"], validator["distance_ppm"]
     return abs(left - right) <= max(1000, max(left, right) // 20)
@@ -105,7 +105,7 @@ class InfringementCourt(gl.Contract):
         require(Address(respondent) != gl.message.sender_address and Address(respondent) != Address("0x" + "0" * 40), "Name a different respondent")
         historic = gl.get_contract_at(self.registry).view().get_terms_at(work_id, used_at)
         claim_id = hashlib.sha256((work_id + ":" + str(len(self.claim_ids))).encode()).hexdigest()
-        self.claims[claim_id] = json.dumps({"claim_id": claim_id, "work_id": work_id, "claimant": work["creator"], "respondent": Address(respondent).as_hex, "output_url": output_url, "output_hash": output_hash, "used_at": used_at, "terms_version": historic["version"], "status": "AWAITING_RESPONSE", "filed_at": now(), "response_deadline": now() + 604800, "bond_atto": str(self.bond_atto), "policy_url": "", "licence_id": ""}, sort_keys=True)
+        self.claims[claim_id] = json.dumps({"claim_id": claim_id, "work_id": work_id, "claimant": work["creator"], "respondent": Address(respondent).as_hex, "output_url": output_url, "output_hash": output_hash, "used_at": used_at, "terms_version": historic["version"], "status": "AWAITING_RESPONSE", "filed_at": now(), "response_deadline": now() + 604800, "bond_atto": str(self.bond_atto), "policy_url": "", "licence_id": "", "appeals": []}, sort_keys=True)
         self.claim_ids.append(claim_id)
         self.total_bonds = u256(self.total_bonds + self.bond_atto)
         return claim_id
@@ -171,6 +171,21 @@ class InfringementCourt(gl.Contract):
         self.claims[claim_id] = json.dumps(claim, sort_keys=True)
         return ruling
 
+    @gl.public.write.payable
+    def appeal_claim(self, claim_id: str) -> None:
+        claim = self.get_claim(claim_id)
+        require(claim["status"] == "RULED" and now() < claim["settle_after"], "Appeal window closed")
+        sender = gl.message.sender_address.as_hex
+        require(sender in (claim["claimant"], claim["respondent"]), "Only a party may appeal")
+        appeals = claim["appeals"]
+        require(len(appeals) < 3, "Maximum appeal rounds reached")
+        bond = int(self.bond_atto) * 2 ** (len(appeals) + 1)
+        require(gl.message.value == bond, "Deposit the exact escalating appeal bond")
+        appeals.append({"appealer": sender, "bond_atto": str(bond), "previous_ruling": claim["ruling"], "posted_at": now()})
+        claim.update({"status": "READY", "appeals": appeals})
+        self.claims[claim_id] = json.dumps(claim, sort_keys=True)
+        self.total_bonds = u256(self.total_bonds + bond)
+
     def _credit(self, recipient: str, amount: int) -> None:
         addr = Address(recipient)
         if addr not in self.credits:
@@ -189,9 +204,22 @@ class InfringementCourt(gl.Contract):
         else:
             self._credit(claim["claimant"], bond + damages)
             self._credit(claim["respondent"], bond - damages)
+        appeal_total = 0
+        ranks = {"NO_USE": 0, "DERIVATIVE_WITHIN_TERMS": 4, "USE": 8}
+        bands = {"NONE": 0, "LOW": 1, "MEDIUM": 2, "HIGH": 3}
+        final_score = ranks[claim["ruling"]["decision"]] + bands[band]
+        for appeal in claim["appeals"]:
+            prior = appeal["previous_ruling"]
+            prior_score = ranks[prior["decision"]] + bands[prior["damages_band"]]
+            claimant_appeal = appeal["appealer"] == claim["claimant"]
+            improved = final_score > prior_score if claimant_appeal else final_score < prior_score
+            recipient = appeal["appealer"] if improved else (claim["respondent"] if claimant_appeal else claim["claimant"])
+            appeal_amount = int(appeal["bond_atto"])
+            appeal_total += appeal_amount
+            self._credit(recipient, appeal_amount)
         claim.update({"status": "SETTLED", "damages_atto": str(damages), "settled_at": now()})
         self.claims[claim_id] = json.dumps(claim, sort_keys=True)
-        self.total_bonds = u256(self.total_bonds - 2 * bond)
+        self.total_bonds = u256(self.total_bonds - 2 * bond - appeal_total)
 
     @gl.public.write
     def cancel_unanswered(self, claim_id: str) -> None:
