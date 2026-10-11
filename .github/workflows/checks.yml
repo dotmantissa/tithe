@@ -23,6 +23,8 @@ jobs:
       - run: npm run typecheck
   contracts:
     runs-on: ubuntu-latest
+    env:
+      PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

@@ -90,6 +90,8 @@ npx playwright install chromium
 npm run test:browser
 ```
 
+The contract tools select pure Python protobuf to match the packaged GenVM dependency. This avoids native protobuf import failures on a fresh machine.
+
 The direct contract tests substitute web, model, and embedding calls to check access, validation, funds, versions, and validator agreement quickly. They are not evidence that a real model reached consensus.
 
 `npm run test:studio` deploys isolated contracts and exercises real web fetching, actual ONNX embeddings, approval, refusal, historical terms, bonded review, and finalized refunds. Its signed transaction recovery state stays in ignored `.secrets` files. Use a new `STUDIO_TEST_RUN` identifier for a fresh run. [The live report](deployments/studio-verification.json) includes transaction references and source hashes. Time dependent settlement and fee release are verified with direct tests rather than pretending that two days passed on Studio.
