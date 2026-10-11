@@ -22,14 +22,20 @@ export async function inspectArtifact(input: string) {
   const url = artifactURL(input);
   const addresses = await lookup(url.hostname, { all: true }).catch(() => { throw new AppError('We could not find that website.'); });
   if (!addresses.length || addresses.some(a => !isPublicAddress(a.address))) throw new AppError('Private network addresses are not accepted.');
-  const chosen = addresses[0];
-  const raw = await new Promise<Buffer>((resolve, reject) => {
+  // Every candidate was checked above. Pin one address per connection so a
+  // second DNS answer cannot redirect the request into a private network.
+  let raw:Buffer|undefined;
+  const candidates=[...addresses].sort((a,b)=>a.family-b.family).slice(0,3);
+  for(const chosen of candidates) {
+    try { raw = await new Promise<Buffer>((resolve, reject) => {
     const req = httpsRequest(url, {
-      agent: false, method: 'GET', timeout: 12000,
+      agent: false, method: 'GET', family: chosen.family,
       headers: { 'User-Agent': 'Tithe/1.0', 'Accept-Encoding': 'identity' },
       lookup: (_host, options, callback) => {
-        if (options.all) callback(null, [chosen]);
-        else callback(null, chosen.address, chosen.family);
+        queueMicrotask(()=>{
+          if (options.all) callback(null, [chosen]);
+          else callback(null, chosen.address, chosen.family);
+        });
       },
     }, res => {
       if (res.statusCode !== 200) { res.resume(); reject(new AppError('The URL must return the artifact directly. Redirects and private pages cannot be registered.')); return; }
@@ -42,20 +48,37 @@ export async function inspectArtifact(input: string) {
       res.on('end', () => resolve(Buffer.concat(chunks)));
       res.on('error', () => reject(new AppError('The website interrupted the download.')));
     });
-    req.on('timeout', () => req.destroy(new AppError('That website took too long to respond.')));
-    req.on('error', error => reject(error instanceof AppError ? error : new AppError('We could not fetch that artifact.')));
+    const deadline=setTimeout(()=>req.destroy(new Error('Download deadline')),10000);
+    req.on('close',()=>clearTimeout(deadline));
+    req.on('error', reject);
     req.end();
-  });
-  if (!raw.length) throw new AppError('That artifact is empty.');
+    }); break;
+    } catch(error) {
+      if(error instanceof AppError)throw error;
+      if(chosen===candidates[candidates.length-1])throw new AppError('We could not fetch that artifact. Please try again or check the public URL.');
+    }
+  }
+  if (!raw?.length) throw new AppError('That artifact is empty.');
   const png = raw.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]));
   const jpeg = raw.subarray(0,3).equals(Buffer.from([255,216,255]));
   const webp = raw.subarray(0,4).toString()==='RIFF' && raw.subarray(8,12).toString()==='WEBP';
   const kind = png || jpeg || webp ? 'image' : 'text';
-  if ((png && raw.includes(Buffer.from('acTL'))) || (webp && raw.includes(Buffer.from('ANIM')))) throw new AppError('Choose a still image. Animated images are not supported.');
+  if ((png || webp) && animatedImage(raw,png)) throw new AppError('Choose a still image. Animated images are not supported.');
   if (kind === 'text') {
     let text: string;
     try { text = new TextDecoder('utf-8', { fatal: true }).decode(raw); } catch { throw new AppError('Choose UTF8 text, PNG, JPEG or WebP.'); }
     if (text.includes('\0') || text.length > 24000) throw new AppError('Text must contain at most 24000 characters.');
   }
   return { content_hash: createHash('sha256').update(raw).digest('hex'), kind, bytes: raw.length, url: input };
+}
+
+function animatedImage(raw:Buffer,png:boolean){
+  let offset=png?8:12;
+  while(offset+8<=raw.length){
+    const size=png?raw.readUInt32BE(offset):raw.readUInt32LE(offset+4);
+    const kind=raw.subarray(png?offset+4:offset,png?offset+8:offset+4).toString();
+    if(kind===(png?'acTL':'ANIM'))return true;
+    offset+=png?size+12:size+8+size%2;
+  }
+  return false;
 }

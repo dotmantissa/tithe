@@ -1,6 +1,6 @@
 import './network';
 import { createClient, createAccount } from 'genlayer-js';
-import { TransactionStatus, type CalldataEncodable, type GenLayerTransaction } from 'genlayer-js/types';
+import { TransactionStatus, transactionsStatusNumberToName, type CalldataEncodable, type GenLayerTransaction } from 'genlayer-js/types';
 import { studionet } from 'genlayer-js/chains';
 import { createHmac } from 'node:crypto';
 import deployment from '../../deployments/studionet.json';
@@ -38,3 +38,11 @@ export function executionSucceeded(tx: GenLayerTransaction): boolean {
   return consensus?.leader_receipt?.[0]?.execution_result === 'SUCCESS';
 }
 export { TransactionStatus };
+
+export function operationState(tx:GenLayerTransaction):string{
+  const raw=String(tx.statusName||tx.status||'PENDING');
+  const status=transactionsStatusNumberToName[raw as keyof typeof transactionsStatusNumberToName]||raw;
+  if(['UNDETERMINED','CANCELED'].includes(status))return 'FAILED';
+  if(['ACCEPTED','FINALIZED'].includes(status)&&!executionSucceeded(tx))return 'FAILED';
+  return status;
+}

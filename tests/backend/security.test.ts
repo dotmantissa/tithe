@@ -1,8 +1,8 @@
 import { describe,it,expect } from 'vitest';
 import { artifactURL,isPublicAddress } from '../../src/lib/artifacts';
 import { actionSchema } from '../../src/lib/schemas';
-import { checkOrigin,authenticate,digest } from '../../src/lib/security';
-import { executionSucceeded,normalize } from '../../src/lib/chain';
+import { checkOrigin,authenticate,digest,readJSON } from '../../src/lib/security';
+import { executionSucceeded,operationState,normalize } from '../../src/lib/chain';
 import { failure,AppError } from '../../src/lib/errors';
 
 describe('artifact fetch boundary',()=>{
@@ -36,4 +36,21 @@ describe('chain results and error privacy',()=>{
     expect(response.status).toBe(503);expect(JSON.stringify(await response.json())).not.toContain('secret');
   });
   it('returns a useful business error',async()=>expect(await failure(new AppError('Your session expired.',401)).json()).toEqual({error:'Your session expired.'}));
+});
+
+describe('bounded JSON input',()=>{
+  it('rejects oversized bodies even without a content length',async()=>{
+    const request=new Request('https://tithe.example/api/actions',{method:'POST',body:JSON.stringify({text:'x'.repeat(64000)})});
+    await expect(readJSON(request)).rejects.toMatchObject({status:413});
+  });
+  it('rejects malformed JSON',async()=>await expect(readJSON(new Request('https://tithe.example/api/actions',{method:'POST',body:'{' }))).rejects.toThrow('valid JSON'));
+  it('reads valid JSON',async()=>expect(await readJSON(new Request('https://tithe.example/api/actions',{method:'POST',body:'{"kind":"withdraw"}'}))).toEqual({kind:'withdraw'}));
+  it('requires an email session for key management',async()=>await expect(authenticate(new Request('https://tithe.example/api/keys',{headers:{Authorization:'Bearer tithe_example'}}),false)).rejects.toMatchObject({status:401}));
+});
+
+describe('consensus status handling',()=>{
+  it('does not confirm an undetermined vote with a successful leader execution',()=>expect(operationState({statusName:'UNDETERMINED',txExecutionResult:1} as Parameters<typeof operationState>[0])).toBe('FAILED'));
+  it('does not confirm a canceled transaction',()=>expect(operationState({statusName:'CANCELED',txExecutionResult:1} as Parameters<typeof operationState>[0])).toBe('FAILED'));
+  it('decodes a numeric accepted Studio status',()=>expect(operationState({status:5,txExecutionResult:1} as Parameters<typeof operationState>[0])).toBe('ACCEPTED'));
+  it('keeps a successful finalized transaction',()=>expect(operationState({statusName:'FINALIZED',txExecutionResult:1} as Parameters<typeof operationState>[0])).toBe('FINALIZED'));
 });

@@ -27,10 +27,11 @@ export function useApi() {
 export function useResource<T>(path:string|null,privateResource=false) {
   const api=useApi(),{authenticated,ready}=usePrivy();
   const [state,setState]=useState<{data:T|null;error:string;loading:boolean}>({data:null,error:'',loading:true});
+  const canLoad=!privateResource||(ready&&authenticated);
   const [revision,setRevision]=useState(0);
   const reload=useCallback(()=>setRevision(v=>v+1),[]);
   useEffect(()=>{
-    if(!path||(privateResource&&(!ready||!authenticated))) return;
+    if(!path||!canLoad) return;
     let active=true;
     async function load(){
       setState(s=>({...s,loading:true,error:''}));
@@ -38,7 +39,7 @@ export function useResource<T>(path:string|null,privateResource=false) {
       catch(error){if(active)setState({data:null,error:error instanceof Error?error.message:'Could not load this page.',loading:false});}
     }
     void load();return()=>{active=false;};
-  },[path,api,revision,privateResource,authenticated,ready]);
+  },[path,api,revision,canLoad]);
   return {...state,reload};
 }
 export function useAction(onComplete?:()=>void) {
@@ -81,8 +82,8 @@ export function AuthGate({children}:{children:React.ReactNode}) {
 }
 export function OperationNotice({operation,error,busy}:{operation:Operation|null;error:string;busy:boolean}) {
   return <>{error&&<Notice error>{error}</Notice>}{operation&&<div className="operation-status" role="status">
-    {busy?<LoaderCircle className="spinner" size={18}/>:operation.status==='FAILED'?<AlertCircle size={18}/>:<Check size={18}/>}
-    <div><strong>{busy?'Your request is with the panel.':operation.status==='FAILED'?'The request did not complete.':'Your request has been recorded.'}</strong><p>{operation.error|| (busy?'You can leave this page. Your desk will keep the record.':'Open your desk to see the result and its explanation.')}</p><Link href="/account">View my desk</Link></div>
+    {busy?<LoaderCircle className="spinner" size={18}/>:['FAILED','SUBMISSION_UNCERTAIN','CANCELED'].includes(operation.status)?<AlertCircle size={18}/>:<Check size={18}/>}
+    <div><strong>{busy?'Your request is with the panel.':operation.status==='FAILED'?'The request did not complete.':operation.status==='SUBMISSION_UNCERTAIN'?'We are checking this submission.':operation.status==='CANCELED'?'This request was canceled.':'Your request has been recorded.'}</strong><p>{operation.error|| (busy?'You can leave this page. Your desk will keep the record.':'Open your desk to see the result and its explanation.')}</p><Link href="/account">View my desk</Link></div>
   </div>}</>;
 }
 export function CopyButton({value,label='Copy'}:{value:string;label?:string}) {

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { keccak256 } from 'viem';
 import type { CalldataEncodable, Hash } from 'genlayer-js/types';
-import { accountFor, addresses, chain, executionSucceeded, normalize, read, signer, type ContractName } from './chain';
+import { accountFor, addresses, chain, executionSucceeded, operationState, normalize, read, signer, type ContractName } from './chain';
 import { database } from './db';
 import { AppError } from './errors';
 import { digest, limit } from './security';
@@ -85,10 +85,9 @@ export async function refreshOperation(subject: string, id: string) {
   if(!op) throw new AppError('Operation not found.',404);
   if(!op.tx_hash) return op;
   const tx=await chain.getTransaction({hash:op.tx_hash as Hash});
-  const status=String(tx.statusName || tx.status || 'PENDING');
-  const decided=['ACCEPTED','FINALIZED','UNDETERMINED','CANCELED'].includes(status);
+  const state=operationState(tx);
+  const decided=['ACCEPTED','FINALIZED'].includes(state);
   const success=executionSucceeded(tx);
-  const state=decided && !success?'FAILED':status;
   const error=state==='FAILED'?'The panel could not complete this request. No confirmed state change was applied.':null;
   let indexed=op.indexed;
   if(success && decided && !indexed) {

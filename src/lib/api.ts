@@ -17,6 +17,18 @@ export async function searchWorks(query='',kind='',offset=0) {
   const rows=await sql`SELECT document FROM tithe_works WHERE (${query}='' OR to_tsvector('english',title || ' ' || (document->'terms'->>'terms_text')) @@ plainto_tsquery('english',${query})) AND (${kind}='' OR kind=${kind}) ORDER BY (document->>'registered_at')::bigint DESC,id LIMIT 21 OFFSET ${offset}`;
   return {works:rows.slice(0,20).map(r=>r.document as Work),has_more:rows.length>20,offset};
 }
+let statsCache:{expires:number;value:unknown}|undefined;
+let statsFlight:Promise<unknown>|undefined;
+async function statistics(){
+  if(statsCache&&statsCache.expires>Date.now())return statsCache.value;
+  if(statsFlight)return statsFlight;
+  statsFlight=(async()=>{
+    const [works,licences,claims,desk,court]=await Promise.all([read<number>('registry','get_count'),read<number>('desk','get_count'),read<number>('court','get_count'),read<{escrow_atto:string}>('desk','get_account',['0x'+'0'.repeat(40)]),read<{escrow_atto:string}>('court','get_account',['0x'+'0'.repeat(40)])]);
+    const value={works,licences,claims,escrow_atto:(BigInt(desk.escrow_atto)+BigInt(court.escrow_atto)).toString(),network:'GenLayer Studio'};
+    statsCache={expires:Date.now()+60000,value};return value;
+  })();
+  try{return await statsFlight;}finally{statsFlight=undefined;}
+}
 export async function handle(request: Request, segments: string[]) {
   try {
     const url=new URL(request.url),path=segments.join('/');
@@ -28,10 +40,7 @@ export async function handle(request: Request, segments: string[]) {
         if(version) return json({...work,version:z.coerce.number().int().positive().parse(version),terms:await read('registry','get_terms',[work.work_id,Number(version)])});
         return json(work);
       }
-      if(path==='stats') {
-        const [works,licences,claims,desk,court]=await Promise.all([read<number>('registry','get_count'),read<number>('desk','get_count'),read<number>('court','get_count'),read<{escrow_atto:string}>('desk','get_account',['0x'+'0'.repeat(40)]),read<{escrow_atto:string}>('court','get_account',['0x'+'0'.repeat(40)])]);
-        return json({works,licences,claims,escrow_atto:(BigInt(desk.escrow_atto)+BigInt(court.escrow_atto)).toString(),network:'GenLayer Studio'});
-      }
+      if(path==='stats') return json(await statistics());
       if(path==='docket') {
         const rows=await database()`SELECT document FROM tithe_records WHERE kind='claim' ORDER BY (document->>'filed_at')::bigint DESC LIMIT 100`;
         return json({claims:rows.map(r=>r.document)});
