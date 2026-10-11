@@ -92,6 +92,8 @@ npm run test:browser
 
 The contract tools load the host's pure Python protobuf before the GenVM SDK. This keeps a native extension from loading against a different packaged protobuf version on a fresh machine.
 
+The test script shares the official runner bundle with the linter. This avoids an obsolete download filename in the direct test tool on a fresh installation. Runner hashes in the contracts stay pinned.
+
 The direct contract tests substitute web, model, and embedding calls to check access, validation, funds, versions, and validator agreement quickly. They are not evidence that a real model reached consensus.
 
 `npm run test:studio` deploys isolated contracts and exercises real web fetching, actual ONNX embeddings, approval, refusal, historical terms, bonded review, and finalized refunds. Its signed transaction recovery state stays in ignored `.secrets` files. Use a new `STUDIO_TEST_RUN` identifier for a fresh run. [The live report](deployments/studio-verification.json) includes transaction references and source hashes. Time dependent settlement and fee release are verified with direct tests rather than pretending that two days passed on Studio.

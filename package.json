@@ -12,7 +12,7 @@
     "db:migrate": "tsx --env-file=.env.local scripts/migrate.ts",
     "deploy:contracts": "tsx --env-file=.env.local scripts/deploy.ts",
     "index": "tsx --env-file=.env.local scripts/index.ts",
-    "test:contracts": "PYTHONPATH=.venv/vendor PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python python3 -m pytest tests/direct -v",
+    "test:contracts": "PYTHONPATH=.venv/vendor python3 scripts/test-contracts.py -v",
     "test:studio": "tsx --env-file=.env.local scripts/test-studio.ts",
     "test:browser": "playwright test",
     "test:api": "tsx --env-file=.env.local scripts/test-api.ts",
