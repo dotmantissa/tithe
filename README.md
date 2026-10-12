@@ -2,6 +2,8 @@
 
 Your work. Your terms. Your share.
 
+Visit [Tithe](https://tithe-desk.vercel.app). Updates pushed to `main` deploy through the linked GitHub repository.
+
 A tithe is the portion returned to the source that made the yield possible. Here, that source is a person who made something worth using.
 
 Tithe gives creators a place to publish permission in their own words. A writer can allow research, price commercial use, ask for attribution, or draw a firm line around a competing product. A lab can describe its intended use, request a licence, and keep a public receipt. If the two sides disagree, GenLayer validators read the committed evidence and the terms that applied at the time.

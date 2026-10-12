@@ -1,0 +1,38 @@
+{
+  "verified_at": "2026-10-12T00:18:01.597989+00:00",
+  "provider": "Vercel",
+  "project": "tithe",
+  "production_url": "https://tithe-desk.vercel.app",
+  "verified_deployment": {
+    "id": "dpl_9u2UqsDd15nBiYi84fgwyHxJSuX3",
+    "url": "https://tithe-dcronwb71-mantissas-projects.vercel.app",
+    "status": "READY",
+    "source": "git",
+    "application_commit": "58b8205d4670ee4ce8140a94268640213852e5af"
+  },
+  "repository": {
+    "url": "https://github.com/dotmantissa/tithe",
+    "production_branch": "main",
+    "automatic_deployments": true
+  },
+  "checks": {
+    "backend_tests_passed": 53,
+    "browser_tests_passed": 10,
+    "live_api_and_mcp": "passed",
+    "privy_email_modal": "passed",
+    "authenticated_maintenance": "passed",
+    "credential_scan_public_assets": 26,
+    "private_file_paths": "404",
+    "git_ci_run": 38180785199,
+    "git_ci_conclusion": "success"
+  },
+  "maintenance": {
+    "path": "/api/maintenance",
+    "schedule_utc": "0 3 * * *",
+    "authentication": "server bearer secret"
+  },
+  "limits": [
+    "Human email OTP completion was not automated.",
+    "The scheduler configuration and endpoint were verified; a scheduled invocation has not yet occurred."
+  ]
+}
