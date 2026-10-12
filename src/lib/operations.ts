@@ -1,3 +1,4 @@
+import {validateSignedAction} from './signed-action';
 import {consentSeal,verifyConsent} from './consent';
 import { randomUUID } from 'node:crypto';
 import { keccak256,parseTransaction } from 'viem';
@@ -94,16 +95,22 @@ export async function submit(subject: string, action: Action, idempotency: strin
   return publicOperation(saved[0] as StoredOperation);
 }
 
+class SavedForBroadcast extends Error {}
 async function signOperation(subject:string,op:StoredOperation,token:string){
- const sql=database(),id=op.id;
+ const sql=database(),id=op.id;let signedRaw:`0x${string}`|undefined;
  try{
   verifyConsent({subject,id,contract_name:op.contract_name,contract_address:op.contract_address,function_name:op.function_name,target_id:op.target_id,action_args:op.action_args,action_json:op.action_json,fund_atto:op.fund_atto},op.consent_seal);
   const client=signer(subject,async raw=>{
    const nonce=String(parseTransaction(raw).nonce),hash=keccak256(raw);
+   validateSignedAction(raw,accountFor(subject).address,op.contract_address,op.phase==='FUNDING'?'fund_credit':op.function_name,op.phase==='FUNDING'?[]:op.action_args,op.phase==='FUNDING'?BigInt(op.fund_atto):0n);
+   await validateSavedTransaction(raw,hash,accountFor(subject).address,nonce);
    const persisted=await sql`UPDATE tithe_operations SET tx_hash=${hash},outbox_ciphertext=${sealTransaction(raw,subject,id+':'+op.phase)},outbox_nonce=${nonce},status='SIGNED',updated_at=now() WHERE id=${id} AND subject=${subject} AND lease_token=${token} AND lease_until>now() AND tx_hash IS NULL AND status='SUBMITTING' RETURNING id`;
    if(!persisted[0])throw new AppError('The signing lease ended before broadcast.',409);
+   signedRaw=raw;throw new SavedForBroadcast();
   });
-  const hash=await client.writeContract({address:op.contract_address as `0x${string}`,functionName:op.phase==='FUNDING'?'fund_credit':op.function_name,args:op.phase==='FUNDING'?[]:op.action_args,value:op.phase==='FUNDING'?BigInt(op.fund_atto):0n});
+  try{await client.writeContract({address:op.contract_address as `0x${string}`,functionName:op.phase==='FUNDING'?'fund_credit':op.function_name,args:op.phase==='FUNDING'?[]:op.action_args,value:op.phase==='FUNDING'?BigInt(op.fund_atto):0n});}catch(error){if(!(error instanceof SavedForBroadcast))throw error;}
+  if(!signedRaw)throw new AppError('No signed request was saved.',503);
+  const hash=keccak256(signedRaw);await chain.sendRawTransaction({serializedTransaction:signedRaw});
   await sql`UPDATE tithe_operations SET tx_hash=${hash},status='PENDING',lease_token=NULL,lease_until=NULL,next_retry_at=now(),updated_at=now() WHERE id=${id} AND subject=${subject} AND lease_token=${token}`;
  }catch{
   await sql`UPDATE tithe_operations SET status=CASE WHEN tx_hash IS NULL THEN 'ABORTED' ELSE 'SUBMISSION_UNCERTAIN' END,error=CASE WHEN tx_hash IS NOT NULL THEN 'The original signed request is saved for recovery.' WHEN fund_hash IS NOT NULL THEN 'The action was not sent. Its payment remains available as withdrawable credit.' ELSE 'Nothing was sent. You can approve a new request.' END,lease_token=NULL,lease_until=NULL,next_retry_at=now(),updated_at=now() WHERE id=${id} AND subject=${subject} AND lease_token=${token}`;
@@ -164,4 +171,16 @@ export async function refreshOperation(subject: string, id: string) {
   if(['FAILED','CANCELED'].includes(state)&&op.target_id&&['licence','claim'].includes(op.kind)){await sql`DELETE FROM tithe_records WHERE id=${op.target_id} AND deployment=${op.contract_address}`;indexed=true;}
   await sql`UPDATE tithe_operations SET status=${state},error=${error},result=${result?JSON.stringify(result):null}::jsonb,indexed=${indexed},next_retry_at=now()+interval '20 seconds',updated_at=now(),lease_token=CASE WHEN ${decided||state==='FAILED'||state==='CANCELED'} THEN NULL ELSE lease_token END WHERE id=${id} AND subject=${subject}`;
   return publicOperation(normalize({...op,status:state,error,result:result||undefined,indexed}));
+}
+
+export async function cancelOperation(subject:string,id:string){
+ const sql=database(),rows=await sql`SELECT * FROM tithe_operations WHERE id=${id} AND subject=${subject}`;
+ const op=rows[0] as StoredOperation|undefined;if(!op)throw new AppError('Operation not found.',404);
+ if(op.phase!=='ACTION'||!op.tx_hash)throw new AppError('A funding transfer must finish safely before it can be withdrawn. Its signed request remains saved.',409);
+ const tx=await chain.getTransaction({hash:op.tx_hash as Hash});
+ if(!['PENDING','PROPOSING','COMMITTING','REVEALING','UNDETERMINED'].includes(operationState(tx)))throw new AppError('This request is already recorded. Read its result instead.',409);
+ if(!op.outbox_ciphertext)throw new AppError('This earlier request needs operator recovery.',409);
+ const raw=openTransaction(op.outbox_ciphertext,subject,id+':ACTION');if((parseTransaction(raw).value||0n)!==0n)throw new AppError('Native funding remains protected until it is credited.',409);await validateSavedTransaction(raw,op.tx_hash,accountFor(subject).address,op.outbox_nonce!);
+ await signer(subject).cancelTransaction({hash:op.tx_hash as Hash});
+ return refreshOperation(subject,id);
 }

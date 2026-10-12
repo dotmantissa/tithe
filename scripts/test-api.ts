@@ -33,7 +33,7 @@ try{
   assert.equal(response.status,200);
   const artifact=await response.json();assert.match(artifact.content_hash,/^[a-f0-9]{64}$/);assert.equal(artifact.kind,'text');assert.ok(artifact.bytes>100);
   response=await request(base+'/api/mcp',{method:'POST',headers:auth,body:JSON.stringify({jsonrpc:'2.0',id:1,method:'initialize',params:{protocolVersion:'2025-06-18',capabilities:{},clientInfo:{name:'Tithe verification',version:'1'}}})});assert.equal(response.status,200);assert.equal((await response.json()).result.serverInfo.name,'Tithe');
-  response=await request(base+'/api/mcp',{method:'POST',headers:auth,body:JSON.stringify({jsonrpc:'2.0',id:2,method:'tools/list'})});assert.equal(response.status,200);assert.equal((await response.json()).result.tools.length,11);
+  response=await request(base+'/api/mcp',{method:'POST',headers:auth,body:JSON.stringify({jsonrpc:'2.0',id:2,method:'tools/list'})});assert.equal(response.status,200);assert.equal((await response.json()).result.tools.length,12);
   response=await request(base+'/api/mcp',{method:'POST',headers:auth,body:JSON.stringify({jsonrpc:'2.0',id:3,method:'tools/call',params:{name:'search_works',arguments:{query:''}}})});assert.equal(response.status,200);assert.equal((await response.json()).result.isError,false);
   response=await request(base+'/api/keys',{method:'POST',headers:auth,body:JSON.stringify({name:'Agent cannot mint keys'})});assert.equal(response.status,401);
   response=await request(base+'/api/actions',{method:'POST',headers:{...auth,Origin:'https://untrusted.example'},body:JSON.stringify({kind:'withdraw',contract:'desk'})});assert.equal(response.status,403);

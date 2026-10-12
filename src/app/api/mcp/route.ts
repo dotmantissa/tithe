@@ -5,7 +5,7 @@ import {failure} from '@/lib/errors';
 import {searchWorks,getAccount} from '@/lib/api';
 import {inspectArtifact} from '@/lib/artifacts';
 import {read} from '@/lib/chain';
-import {submit,refreshOperation,resumeOperation} from '@/lib/operations';
+import {submit,refreshOperation,resumeOperation,cancelOperation} from '@/lib/operations';
 import {actionSchema} from '@/lib/schemas';
 export const runtime='nodejs';export const maxDuration=300;export const dynamic='force-dynamic';
 const version='2025-06-18',record=z.string().regex(/^[a-f0-9]{64}$/),operation=z.string().uuid();
@@ -17,9 +17,9 @@ const schemas={
  get_account:z.strictObject({works_offset:z.number().int().min(0).default(0),licences_offset:z.number().int().min(0).default(0),claims_offset:z.number().int().min(0).default(0),operations_offset:z.number().int().min(0).default(0)}),
  inspect_artifact:z.strictObject({url:z.string().max(2048)}),
  submit_action:z.strictObject({action:actionSchema,idempotency_key:z.string().min(16).max(100)}),
- operation_status:z.strictObject({operation_id:operation}),resume_operation:z.strictObject({operation_id:operation}),
+ operation_status:z.strictObject({operation_id:operation}),resume_operation:z.strictObject({operation_id:operation}),cancel_operation:z.strictObject({operation_id:operation}),
 };
-const descriptions:Record<keyof typeof schemas,string>={search_works:'Search public works with paginated results.',get_work:'Read the registered work and current terms from GenLayer.',get_licence:'Read the resulting licence, approved use, terms version and escrow status.',read_docket:'Read the public claim, agreed time, prior licence, ruling and review history.',get_terms:'Read a specific immutable terms version.',terms_at_use:'Read all historical version candidates at the proposed time; parties must agree explicitly.',get_account:'Read your managed address, native balance, withdrawable credits and independently paginated records.',inspect_artifact:'Fetch public text, PNG or WebP and fingerprint the actual bytes.',submit_action:'Submit a consented action. Paid actions require the exact published fee or bond and terms or review round. Returns a durable operation ID; poll until final, then retrieve result.record_id.',operation_status:'Read execution and consensus status plus the resulting record ID. Accepted results are provisional; continue until FINALIZED or FAILED.',resume_operation:'Recover a saved uncertain submission using the identical signed bytes. Never creates a replacement payment.'};
+const descriptions:Record<keyof typeof schemas,string>={search_works:'Search public works with paginated results.',get_work:'Read the registered work and current terms from GenLayer.',get_licence:'Read the resulting licence, approved use, terms version and escrow status.',read_docket:'Read the public claim, agreed time, prior licence, ruling and review history.',get_terms:'Read a specific immutable terms version.',terms_at_use:'Read all historical version candidates at the proposed time; parties must agree explicitly.',get_account:'Read your managed address, native balance, withdrawable credits and independently paginated records.',inspect_artifact:'Fetch public text, PNG or WebP and fingerprint the actual bytes.',submit_action:'Submit a consented action. Paid actions require the exact published fee or bond and terms or review round. Returns a durable operation ID; poll until final, then retrieve result.record_id.',operation_status:'Read execution and consensus status plus the resulting record ID. Accepted results are provisional; continue until FINALIZED or FAILED.',cancel_operation:'Cancel your own stalled zero-value action before it is recorded. Funding transfers remain protected and cannot be canceled through this tool.',resume_operation:'Recover a saved uncertain submission using the identical signed bytes. Never creates a replacement payment.'};
 const tools=Object.entries(schemas).map(([name,schema])=>({name,description:descriptions[name as keyof typeof schemas],inputSchema:z.toJSONSchema(schema)}));
 const reply=(id:unknown,result:unknown)=>NextResponse.json({jsonrpc:'2.0',id,result},{headers:{'Cache-Control':'no-store'}});
 const protocolError=(id:unknown,code:number,message:string,status=200)=>NextResponse.json({jsonrpc:'2.0',id,error:{code,message}},{status});
@@ -58,6 +58,7 @@ export async function POST(request:Request){
    else if(name==='get_account'){const url=new URL('https://tithe.invalid/api/account');for(const [key,value] of Object.entries(args))url.searchParams.set(key,String(value));output=await getAccount(subject,url);}
    else if(name==='inspect_artifact')output=await inspectArtifact(String(args.url));
    else if(name==='submit_action')output=await submit(subject,actionSchema.parse(args.action),String(args.idempotency_key));
+   else if(name==='cancel_operation')output=await cancelOperation(subject,String(args.operation_id));
    else if(name==='resume_operation')output=await resumeOperation(subject,String(args.operation_id));
    else output=await refreshOperation(subject,String(args.operation_id));
    // structuredContent must be an object, including when a tool returns an array.

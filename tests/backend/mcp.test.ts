@@ -5,7 +5,7 @@ const m=vi.hoisted(()=>({read:vi.fn(),submit:vi.fn(),refresh:vi.fn(),account:vi.
 vi.mock('@/lib/security',()=>({authenticate:async()=> 'owner',checkOrigin:()=>{},limit:async()=>{},readJSON:async(r:Request)=>r.json()}));
 vi.mock('@/lib/api',()=>({searchWorks:async()=>({works:[]}),getAccount:m.account}));
 vi.mock('@/lib/chain',()=>({read:m.read}));
-vi.mock('@/lib/operations',()=>({submit:m.submit,refreshOperation:m.refresh,resumeOperation:m.refresh}));
+vi.mock('@/lib/operations',()=>({submit:m.submit,refreshOperation:m.refresh,resumeOperation:m.refresh,cancelOperation:m.refresh}));
 import {POST,GET} from '../../src/app/api/mcp/route';
 beforeEach(()=>{vi.clearAllMocks();m.read.mockResolvedValue({licence_id:'b'.repeat(64),decision:'APPROVE',terms_version:1});m.submit.mockResolvedValue({id:'12345678-1234-4234-8234-123456789012',status:'PENDING'});m.refresh.mockResolvedValue({status:'FINALIZED',result:{record_id:'b'.repeat(64),contract:'desk',method:'request_licence'}});m.account.mockResolvedValue({balance_atto:'100',credit_atto:'0',works:[],licences:[]});});
 it('supports an actual official MCP client from initialization through licence result retrieval',async()=>{

@@ -1,15 +1,15 @@
 import {beforeEach,it,expect,vi} from 'vitest';
 import {privateKeyToAccount} from 'viem/accounts';
 import {keccak256} from 'viem';
-const m=vi.hoisted(()=>({sql:vi.fn(),get:vi.fn(),send:vi.fn(),address:'',row:{} as Record<string,unknown>}));
+const m=vi.hoisted(()=>({sql:vi.fn(),get:vi.fn(),send:vi.fn(),address:'',state:'FINALIZED',cancel:vi.fn(),row:{} as Record<string,unknown>}));
 vi.mock('../../src/lib/db',()=>({database:()=>m.sql}));
-vi.mock('../../src/lib/chain',()=>({accountFor:()=>({address:m.address}),chain:{getTransaction:m.get,sendRawTransaction:m.send},executionSucceeded:()=>true,operationState:()=> 'FINALIZED',normalize:(v:unknown)=>v,addresses:{}}));
+vi.mock('../../src/lib/chain',()=>({accountFor:()=>({address:m.address}),chain:{getTransaction:m.get,sendRawTransaction:m.send},executionSucceeded:()=>true,operationState:()=>m.state,normalize:(v:unknown)=>v,addresses:{},signer:()=>({cancelTransaction:m.cancel})}));
 vi.mock('../../src/lib/indexer',()=>({reconcileTarget:async()=>{}}));
-import {resumeOperation,refreshOperation,publicOperation,abortExpiredUnsent} from '../../src/lib/operations';
+import {resumeOperation,refreshOperation,publicOperation,abortExpiredUnsent,cancelOperation} from '../../src/lib/operations';
 import {sealTransaction} from '../../src/lib/outbox';
 const account=privateKeyToAccount(('0x'+'1'.repeat(64)) as `0x${string}`);
 beforeEach(async()=>{
- vi.clearAllMocks();vi.stubEnv('ACCOUNT_DERIVATION_SECRET','b'.repeat(64));m.address=account.address;
+ vi.clearAllMocks();m.state='FINALIZED';vi.stubEnv('ACCOUNT_DERIVATION_SECRET','b'.repeat(64));m.address=account.address;
  const raw=await account.signTransaction({chainId:61999,type:'legacy',nonce:7,to:account.address,value:100n,gas:21000n,gasPrice:0n});
  m.row={id:'operation',subject:'owner',kind:'licence',status:'SIGNED',tx_hash:keccak256(raw),outbox_ciphertext:sealTransaction(raw,'owner','operation:ACTION'),outbox_nonce:'7',attempts:0,indexed:true,contract_name:'desk',target_id:'record',function_name:'request_licence',created_at:'today'};
  m.sql.mockImplementation(async(strings:TemplateStringsArray,...values:unknown[])=>{
@@ -55,3 +55,9 @@ it('aborts only unsigned expired leases and never clears a saved payment',async(
 it('does not expose funding confirmation as a completed licence',()=>{
  const op=publicOperation({...m.row,phase:'FUNDING',status:'FINALIZED'} as never);expect(op.status).toBe('FUNDING');expect(op.result).toBeUndefined();
 });
+
+it('only cancels the owned unrecorded action and checks the same saved signature',async()=>{m.row.phase='ACTION';const raw=await account.signTransaction({chainId:61999,type:'legacy',nonce:7,to:account.address,value:0n,gas:21000n,gasPrice:0n});m.row.tx_hash=keccak256(raw);m.row.outbox_ciphertext=sealTransaction(raw,'owner','operation:ACTION');m.state='COMMITTING';m.cancel.mockImplementation(async()=>{m.state='CANCELED';});const op=await cancelOperation('owner','operation');expect(op.status).toBe('CANCELED');expect(m.cancel).toHaveBeenCalledWith({hash:m.row.tx_hash});});
+it('never cancels a native funding transfer or an already recorded action',async()=>{m.row.phase='FUNDING';await expect(cancelOperation('owner','operation')).rejects.toMatchObject({status:409});m.row.phase='ACTION';await expect(cancelOperation('owner','operation')).rejects.toMatchObject({status:409});expect(m.cancel).not.toHaveBeenCalled();});
+it('does not cancel another account or a modified signed request',async()=>{m.row.phase='ACTION';m.state='PENDING';await expect(cancelOperation('stranger','operation')).rejects.toMatchObject({status:404});m.row.outbox_ciphertext='edited';await expect(cancelOperation('owner','operation')).rejects.toMatchObject({status:503});expect(m.cancel).not.toHaveBeenCalled();});
+
+it('does not cancel an attached native payment even if its stored phase is mislabeled',async()=>{m.row.phase='ACTION';m.state='PENDING';await expect(cancelOperation('owner','operation')).rejects.toMatchObject({status:409});expect(m.cancel).not.toHaveBeenCalled();});
