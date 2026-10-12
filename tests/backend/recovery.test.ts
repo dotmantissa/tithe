@@ -4,7 +4,7 @@ import {keccak256} from 'viem';
 const m=vi.hoisted(()=>({sql:vi.fn(),get:vi.fn(),send:vi.fn(),address:'',row:{} as Record<string,unknown>}));
 vi.mock('../../src/lib/db',()=>({database:()=>m.sql}));
 vi.mock('../../src/lib/chain',()=>({accountFor:()=>({address:m.address}),chain:{getTransaction:m.get,sendRawTransaction:m.send},executionSucceeded:()=>true,operationState:()=> 'FINALIZED',normalize:(v:unknown)=>v,addresses:{}}));
-vi.mock('../../src/lib/indexer',()=>({syncIndex:async()=>{}}));
+vi.mock('../../src/lib/indexer',()=>({reconcileTarget:async()=>{}}));
 import {resumeOperation,refreshOperation,publicOperation,abortExpiredUnsent} from '../../src/lib/operations';
 import {sealTransaction} from '../../src/lib/outbox';
 const account=privateKeyToAccount(('0x'+'1'.repeat(64)) as `0x${string}`);

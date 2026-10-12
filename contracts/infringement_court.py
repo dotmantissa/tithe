@@ -74,11 +74,11 @@ def fetch_artifact(url: str, content_hash: str) -> dict:
     require(hashlib.sha256(raw).hexdigest() == content_hash, "Content hash changed")
     is_image = raw.startswith((b"\x89PNG\r\n\x1a\n", b"\xff\xd8\xff", b"RIFF"))
     if is_image:
-        require(not raw.startswith(b"RIFF") or raw[8:12] == b"WEBP", "Only PNG, JPEG and WebP still images are supported")
+        require(not raw.startswith(b"RIFF") or raw[8:12] == b"WEBP", "Only PNG and WebP still images are supported")
         require(not (raw.startswith(b"\x89PNG") or raw.startswith(b"RIFF")) or not is_animated(raw), "Animated images are not supported")
         try:
             image = Image.open(ImageBytes(raw))
-            require(image.format in ("PNG", "JPEG", "WEBP"), "Only PNG, JPEG and WebP are supported")
+            require(image.format in ("PNG", "WEBP"), "Only PNG and WebP are supported")
             require(getattr(image, "n_frames", 1) == 1, "Animated images are not supported")
             require(0 < image.width <= 4096 and 0 < image.height <= 4096 and image.width * image.height <= 16_000_000, "Image dimensions exceed the limit")
             image.verify()
@@ -92,7 +92,7 @@ def fetch_artifact(url: str, content_hash: str) -> dict:
     try:
         text = raw.decode("utf-8")
     except UnicodeDecodeError:
-        raise gl.vm.UserError("[EXPECTED] Only UTF8 text and PNG, JPEG, WebP images are supported")
+        raise gl.vm.UserError("[EXPECTED] Only UTF8 text and PNG and WebP images are supported")
     require("\x00" not in text and len(text) <= 24000, "Text must be at most 24000 characters")
     return {"kind": "text", "body": raw, "text": text}
 
@@ -167,6 +167,7 @@ def visual_signature(raw: bytes) -> str:
 
 
 class InfringementCourt(gl.Contract):
+    revision: u256
     registry: Address
     desk: Address
     claims: TreeMap[str, str]
@@ -180,6 +181,7 @@ class InfringementCourt(gl.Contract):
 
     def __init__(self, registry: str, desk: str, bond_atto: int, response_seconds: int = 604800, hearing_seconds: int = 86400, appeal_seconds: int = 172800):
         require(0 < bond_atto < 2**128, "Bond must be positive")
+        self.revision = u256(0)
         self.registry = Address(registry)
         self.desk = Address(desk)
         self.bond_atto = u256(bond_atto)
@@ -206,6 +208,7 @@ class InfringementCourt(gl.Contract):
         claim_id = hashlib.sha256((work_id + identifier).encode()).hexdigest()
         require(claim_id not in self.claims, "This request is already recorded")
         self.claims[claim_id] = json.dumps({"claim_id": claim_id, "work_id": work_id, "claimant": work["creator"], "respondent": Address(respondent).as_hex, "output_url": output_url, "output_hash": output_hash, "used_at": used_at, "terms_version": historic["version"], "status": "AWAITING_RESPONSE", "filed_at": now(), "response_deadline": now() + int(self.response_seconds), "bond_atto": str(self.bond_atto), "policy_url": "", "policy_hash": "", "policy_text": "", "licence_id": "", "time_agreed": False, "appeals": []}, sort_keys=True)
+        self.revision = u256(self.revision + 1)
         self.claim_ids.append(claim_id)
         self.total_bonds = u256(self.total_bonds + self.bond_atto)
         return claim_id
@@ -239,6 +242,7 @@ class InfringementCourt(gl.Contract):
             require(licence["decision"] == "APPROVE" and Address(licence["holder"]) == Address(claim["respondent"]) and licence["work_id"] == claim["work_id"] and licence["issued_at"] <= claim["used_at"], "Licence does not cover this respondent, work or use time")
         claim.update({"status": "READY", "policy_url": policy_url, "policy_hash": policy_hash, "policy_text": policy_text, "policy_verified_at": now() if policy_url else 0, "licence_id": licence_id, "time_agreed": True, "hearing_deadline": now() + int(self.hearing_seconds)})
         self.claims[claim_id] = json.dumps(claim, sort_keys=True)
+        self.revision = u256(self.revision + 1)
         self.total_bonds = u256(self.total_bonds + self.bond_atto)
 
     @gl.public.write
@@ -251,6 +255,7 @@ class InfringementCourt(gl.Contract):
         gl.get_contract_at(self.registry).view().get_terms_at(claim["work_id"], used_at, terms_version)
         claim.update({"status": "TIME_DISPUTED", "time_proposal": {"by": sender, "used_at": used_at, "terms_version": terms_version}})
         self.claims[claim_id] = json.dumps(claim, sort_keys=True)
+        self.revision = u256(self.revision + 1)
 
     @gl.public.write
     def accept_use_time(self, claim_id: str, used_at: int, terms_version: int) -> None:
@@ -264,6 +269,7 @@ class InfringementCourt(gl.Contract):
         claim.update({"status": "AWAITING_RESPONSE", "used_at": used_at, "terms_version": terms_version})
         del claim["time_proposal"]
         self.claims[claim_id] = json.dumps(claim, sort_keys=True)
+        self.revision = u256(self.revision + 1)
 
     @gl.public.write
     def rule(self, claim_id: str) -> dict:
@@ -325,6 +331,7 @@ class InfringementCourt(gl.Contract):
             claim["appeals"][-1].update({"completed_at": now(), "outcome": "REVIEWED"})
         claim.update({"status": "RULED", "ruling": ruling, "ruled_at": now(), "settle_after": now() + int(self.appeal_seconds)})
         self.claims[claim_id] = json.dumps(claim, sort_keys=True)
+        self.revision = u256(self.revision + 1)
         return ruling
 
     @gl.public.write.payable
@@ -340,6 +347,7 @@ class InfringementCourt(gl.Contract):
         appeals.append({"appealer": sender, "bond_atto": str(bond), "previous_ruling": claim["ruling"], "posted_at": now()})
         claim.update({"status": "REVIEW_PENDING", "appeals": appeals, "hearing_deadline": now() + int(self.hearing_seconds)})
         self.claims[claim_id] = json.dumps(claim, sort_keys=True)
+        self.revision = u256(self.revision + 1)
         self.total_bonds = u256(self.total_bonds + bond)
 
     @gl.public.write
@@ -359,6 +367,7 @@ class InfringementCourt(gl.Contract):
             self.total_bonds = u256(self.total_bonds - 2 * self.bond_atto)
             claim.update({"status": "CLOSED_WITHOUT_RULING", "recovery_reason": "The hearing deadline passed. Both bonds were returned without a verdict."})
         self.claims[claim_id] = json.dumps(claim, sort_keys=True)
+        self.revision = u256(self.revision + 1)
 
     def _credit(self, recipient: str, amount: int) -> None:
         addr = Address(recipient)
@@ -395,6 +404,7 @@ class InfringementCourt(gl.Contract):
             self._credit(recipient, appeal_amount)
         claim.update({"status": "SETTLED", "damages_atto": str(damages), "settled_at": now()})
         self.claims[claim_id] = json.dumps(claim, sort_keys=True)
+        self.revision = u256(self.revision + 1)
         self.total_bonds = u256(self.total_bonds - 2 * bond - appeal_total)
 
     @gl.public.write
@@ -403,6 +413,7 @@ class InfringementCourt(gl.Contract):
         require(claim["status"] in ("AWAITING_RESPONSE", "TIME_DISPUTED") and now() > claim["response_deadline"], "Response window is still open")
         claim["status"] = "CLOSED_WITHOUT_RULING"
         self.claims[claim_id] = json.dumps(claim, sort_keys=True)
+        self.revision = u256(self.revision + 1)
         self._credit(claim["claimant"], int(self.bond_atto))
         self.total_bonds = u256(self.total_bonds - self.bond_atto)
 
@@ -437,3 +448,7 @@ class InfringementCourt(gl.Contract):
     @gl.public.view
     def get_config(self) -> dict:
         return {"registry": self.registry.as_hex, "desk": self.desk.as_hex, "bond_atto": str(self.bond_atto), "response_seconds": int(self.response_seconds), "hearing_seconds": int(self.hearing_seconds), "appeal_seconds": int(self.appeal_seconds)}
+
+    @gl.public.view
+    def get_snapshot(self) -> dict:
+        return {"count": len(self.claim_ids), "revision": int(self.revision)}

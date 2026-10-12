@@ -74,11 +74,11 @@ def fetch_artifact(url: str, content_hash: str) -> dict:
     require(hashlib.sha256(raw).hexdigest() == content_hash, "Content hash changed")
     is_image = raw.startswith((b"\x89PNG\r\n\x1a\n", b"\xff\xd8\xff", b"RIFF"))
     if is_image:
-        require(not raw.startswith(b"RIFF") or raw[8:12] == b"WEBP", "Only PNG, JPEG and WebP still images are supported")
+        require(not raw.startswith(b"RIFF") or raw[8:12] == b"WEBP", "Only PNG and WebP still images are supported")
         require(not (raw.startswith(b"\x89PNG") or raw.startswith(b"RIFF")) or not is_animated(raw), "Animated images are not supported")
         try:
             image = Image.open(ImageBytes(raw))
-            require(image.format in ("PNG", "JPEG", "WEBP"), "Only PNG, JPEG and WebP are supported")
+            require(image.format in ("PNG", "WEBP"), "Only PNG and WebP are supported")
             require(getattr(image, "n_frames", 1) == 1, "Animated images are not supported")
             require(0 < image.width <= 4096 and 0 < image.height <= 4096 and image.width * image.height <= 16_000_000, "Image dimensions exceed the limit")
             image.verify()
@@ -92,7 +92,7 @@ def fetch_artifact(url: str, content_hash: str) -> dict:
     try:
         text = raw.decode("utf-8")
     except UnicodeDecodeError:
-        raise gl.vm.UserError("[EXPECTED] Only UTF8 text and PNG, JPEG, WebP images are supported")
+        raise gl.vm.UserError("[EXPECTED] Only UTF8 text and PNG and WebP images are supported")
     require("\x00" not in text and len(text) <= 24000, "Text must be at most 24000 characters")
     return {"kind": "text", "body": raw, "text": text}
 
@@ -143,13 +143,14 @@ class Work:
 
 
 class WorkRegistry(gl.Contract):
+    revision: u256
     works: TreeMap[str, Work]
     work_ids: DynArray[str]
     creator_works: TreeMap[Address, DynArray[str]]
     versions: TreeMap[str, str]
 
     def __init__(self):
-        pass
+        self.revision = u256(0)
 
     def _terms(self, terms_text: str, price_schedule_atto: str, licence_class: str) -> dict:
         lines = [line.strip() for line in terms_text.splitlines() if line.strip()]
@@ -183,6 +184,7 @@ class WorkRegistry(gl.Contract):
         self.work_ids.append(work_id)
         self.creator_works.get_or_insert_default(creator).append(work_id)
         self.versions[work_id + ":1"] = json.dumps(terms, sort_keys=True)
+        self.revision = u256(self.revision + 1)
         return work_id
 
     @gl.public.write
@@ -195,6 +197,7 @@ class WorkRegistry(gl.Contract):
         require(terms["effective_at"] >= self.get_terms(work_id, int(work.version))["effective_at"], "Terms timestamps cannot move backwards")
         work.version = u256(work.version + 1)
         self.versions[work_id + ":" + str(work.version)] = json.dumps(terms, sort_keys=True)
+        self.revision = u256(self.revision + 1)
         return int(work.version)
 
     @gl.public.view
@@ -250,3 +253,7 @@ class WorkRegistry(gl.Contract):
     @gl.public.view
     def get_count(self) -> int:
         return len(self.work_ids)
+
+    @gl.public.view
+    def get_snapshot(self) -> dict:
+        return {"count": len(self.work_ids), "revision": int(self.revision)}

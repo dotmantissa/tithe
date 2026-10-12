@@ -49,8 +49,8 @@ describe('bounded JSON input',()=>{
 });
 
 describe('consensus status handling',()=>{
-  it('does not confirm an undetermined vote with a successful leader execution',()=>expect(operationState({statusName:'UNDETERMINED',txExecutionResult:1} as Parameters<typeof operationState>[0])).toBe('FAILED'));
-  it('does not confirm a canceled transaction',()=>expect(operationState({statusName:'CANCELED',txExecutionResult:1} as Parameters<typeof operationState>[0])).toBe('FAILED'));
+  it('does not confirm an undetermined vote with a successful leader execution',()=>expect(operationState({statusName:'UNDETERMINED',txExecutionResult:1} as Parameters<typeof operationState>[0])).toBe('UNDETERMINED'));
+  it('does not confirm a canceled transaction',()=>expect(operationState({statusName:'CANCELED',txExecutionResult:1} as Parameters<typeof operationState>[0])).toBe('CANCELED'));
   it('decodes a numeric accepted Studio status',()=>expect(operationState({status:5,txExecutionResult:1} as Parameters<typeof operationState>[0])).toBe('ACCEPTED'));
   it('keeps a successful finalized transaction',()=>expect(operationState({statusName:'FINALIZED',txExecutionResult:1} as Parameters<typeof operationState>[0])).toBe('FINALIZED'));
 });

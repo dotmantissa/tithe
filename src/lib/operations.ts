@@ -7,7 +7,7 @@ import { database } from './db';
 import { AppError } from './errors';
 import { digest, limit } from './security';
 import { inspectArtifact } from './artifacts';
-import { syncIndex } from './indexer';
+import { reconcileTarget } from './indexer';
 import type { Action } from './schemas';
 import type { Work, Operation, Claim } from './types';
 
@@ -133,13 +133,13 @@ export async function refreshOperation(subject: string, id: string) {
   if(!op.tx_hash)return publicOperation(op);
   let tx;
   try{tx=await chain.getTransaction({hash:op.tx_hash as Hash});}
-  catch{return publicOperation(op);}
+  catch{await sql`UPDATE tithe_operations SET next_retry_at=now()+interval '1 minute',updated_at=now() WHERE id=${id} AND subject=${subject}`;return publicOperation(op);}
   const state=operationState(tx),success=executionSucceeded(tx),decided=['ACCEPTED','FINALIZED'].includes(state);
   const error=state==='FAILED'?'The current network result did not apply this request.':null;
   const result=success&&decided?{record_id:op.target_id,contract:op.contract_name,method:op.function_name}:null;
   const changed=op.status!==state||!op.indexed;
   let indexed=op.indexed;
-  if(success&&decided&&changed){try{await syncIndex();indexed=true;}catch{indexed=false;}}
-  await sql`UPDATE tithe_operations SET status=${state},error=${error},result=${result?JSON.stringify(result):null}::jsonb,indexed=${indexed},next_retry_at=now()+interval '20 seconds',updated_at=now(),lease_token=CASE WHEN ${decided||state==='FAILED'} THEN NULL ELSE lease_token END WHERE id=${id} AND subject=${subject}`;
+  if(success&&decided&&changed){try{if(op.target_id)await reconcileTarget(op.contract_name,op.target_id);indexed=true;}catch{indexed=false;}}
+  await sql`UPDATE tithe_operations SET status=${state},error=${error},result=${result?JSON.stringify(result):null}::jsonb,indexed=${indexed},next_retry_at=now()+interval '20 seconds',updated_at=now(),lease_token=CASE WHEN ${decided||state==='FAILED'||state==='CANCELED'} THEN NULL ELSE lease_token END WHERE id=${id} AND subject=${subject}`;
   return publicOperation(normalize({...op,status:state,error,result:result||undefined,indexed}));
 }

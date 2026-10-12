@@ -76,3 +76,12 @@ def test_same_second_terms_need_stable_explicit_version(direct_vm,direct_deploy,
     assert c.get_terms_at(key,timestamp,2)['version']==2
     assert len(c.get_terms_versions_at(key,timestamp))==2
     with direct_vm.expect_revert('not in force'):c.get_terms_at(key,timestamp,3)
+
+
+def test_snapshot_tracks_terms_not_only_collection_size(direct_vm,direct_deploy,direct_alice,evidence):
+    c=direct_deploy('contracts/work_registry.py');direct_vm.sender=direct_alice
+    assert c.get_snapshot()=={'count':0,'revision':0}
+    key=c.register_work(URL,HASH,TERMS,PRICES,'commercial')
+    assert c.get_snapshot()=={'count':1,'revision':1}
+    c.update_terms(key,TERMS,PRICES,'commercial')
+    assert c.get_snapshot()=={'count':1,'revision':2}

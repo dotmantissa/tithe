@@ -53,7 +53,7 @@ Each contract pins a concrete GenVM runner hash. The court also pins the embeddi
 
 Validators must agree exactly on the category, numbered terms clause, damages band, and policy hash. Distance must agree within five percent, with an absolute floor of 1000 parts per million near zero. The comparative validation approach follows [GenLayer's non determinism documentation](https://docs.genlayer.com/developers/intelligent-contracts/features/non-determinism). A score never overrides the written conditions.
 
-Registration accepts directly reachable public HTTPS artifacts, with a limit of 2 MB and 24000 text characters. Supported images are still PNG, JPEG, and WebP. Animated images, audio, and video are outside this version. Keep the registered bytes available at their original URL: a changed or missing source cannot be silently substituted in a later hearing.
+Registration accepts directly reachable public HTTPS artifacts, with a limit of 2 MB and 24000 text characters. Supported images are still PNG and WebP. Animated images, audio, and video are outside this version. Keep the registered bytes available at their original URL: a changed or missing source cannot be silently substituted in a later hearing.
 
 Terms use one clause per nonempty line. Prices are exact decimal strings in atto GEN, with 18 decimal places per GEN. A schedule can price research, commercial, quotation, or derivative use; a price alone never grants permission. The panel still assesses the actual terms.
 

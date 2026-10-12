@@ -74,11 +74,11 @@ def fetch_artifact(url: str, content_hash: str) -> dict:
     require(hashlib.sha256(raw).hexdigest() == content_hash, "Content hash changed")
     is_image = raw.startswith((b"\x89PNG\r\n\x1a\n", b"\xff\xd8\xff", b"RIFF"))
     if is_image:
-        require(not raw.startswith(b"RIFF") or raw[8:12] == b"WEBP", "Only PNG, JPEG and WebP still images are supported")
+        require(not raw.startswith(b"RIFF") or raw[8:12] == b"WEBP", "Only PNG and WebP still images are supported")
         require(not (raw.startswith(b"\x89PNG") or raw.startswith(b"RIFF")) or not is_animated(raw), "Animated images are not supported")
         try:
             image = Image.open(ImageBytes(raw))
-            require(image.format in ("PNG", "JPEG", "WEBP"), "Only PNG, JPEG and WebP are supported")
+            require(image.format in ("PNG", "WEBP"), "Only PNG and WebP are supported")
             require(getattr(image, "n_frames", 1) == 1, "Animated images are not supported")
             require(0 < image.width <= 4096 and 0 < image.height <= 4096 and image.width * image.height <= 16_000_000, "Image dimensions exceed the limit")
             image.verify()
@@ -92,7 +92,7 @@ def fetch_artifact(url: str, content_hash: str) -> dict:
     try:
         text = raw.decode("utf-8")
     except UnicodeDecodeError:
-        raise gl.vm.UserError("[EXPECTED] Only UTF8 text and PNG, JPEG, WebP images are supported")
+        raise gl.vm.UserError("[EXPECTED] Only UTF8 text and PNG and WebP images are supported")
     require("\x00" not in text and len(text) <= 24000, "Text must be at most 24000 characters")
     return {"kind": "text", "body": raw, "text": text}
 
@@ -131,6 +131,7 @@ class Recipient:
         pass
 
 class LicenceDesk(gl.Contract):
+    revision: u256
     registry: Address
     licences: TreeMap[str, str]
     licence_ids: DynArray[str]
@@ -141,6 +142,7 @@ class LicenceDesk(gl.Contract):
 
     def __init__(self, registry: str, escrow_seconds: int = 86400):
         require(1 <= escrow_seconds <= 31536000, "Invalid escrow duration")
+        self.revision = u256(0)
         self.registry = Address(registry)
         self.escrow_seconds = u256(escrow_seconds)
 
@@ -176,6 +178,7 @@ class LicenceDesk(gl.Contract):
         self.licences[licence_id] = json.dumps(record, sort_keys=True)
         self.licence_ids.append(licence_id)
         self.paid[licence_id] = False
+        self.revision = u256(self.revision + 1)
         if ruling["decision"] == "REFUSE":
             self._credit(gl.message.sender_address, fee)
             self.paid[licence_id] = True
@@ -195,6 +198,7 @@ class LicenceDesk(gl.Contract):
         require(now() >= record["release_at"], "Fee is still in escrow")
         fee = int(record["fee_atto"])
         self.paid[licence_id] = True
+        self.revision = u256(self.revision + 1)
         self.total_escrow = u256(self.total_escrow - fee)
         self._credit(Address(record["creator"]), fee)
 
@@ -229,3 +233,7 @@ class LicenceDesk(gl.Contract):
     @gl.public.view
     def get_config(self) -> dict:
         return {"registry": self.registry.as_hex, "escrow_seconds": int(self.escrow_seconds)}
+
+    @gl.public.view
+    def get_snapshot(self) -> dict:
+        return {"count": len(self.licence_ids), "revision": int(self.revision)}

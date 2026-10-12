@@ -1,4 +1,7 @@
 import './network';
+import './rpc-budget';
+import {cacheKey} from './rpc-budget';
+import {database} from './db';
 import { createClient, createAccount } from 'genlayer-js';
 import { TransactionStatus, transactionsStatusNumberToName, type CalldataEncodable, type GenLayerTransaction } from 'genlayer-js/types';
 import { studionet } from 'genlayer-js/chains';
@@ -26,10 +29,15 @@ export function signer(subject: string, onSigned?: (raw: `0x${string}`) => Promi
 export function normalize<T>(value: unknown): T {
   return JSON.parse(JSON.stringify(value, (_, v) => typeof v === 'bigint' ? (v <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(v) : v.toString()) : v instanceof Map ? Object.fromEntries(v) : v));
 }
-export async function read<T>(contract: ContractName, method: string, args: CalldataEncodable[] = []): Promise<T> {
+export async function read<T>(contract: ContractName, method: string, args: CalldataEncodable[] = [],fresh=false): Promise<T> {
   const address = addresses[contract] as `0x${string}`;
   if (!address) throw new Error('The Studio contracts have not been deployed');
-  return normalize<T>(await chain.readContract({ address, functionName: method, args, jsonSafeReturn: true }));
+  const key=cacheKey(address+':'+method+':'+JSON.stringify(args,(_,v)=>typeof v==='bigint'?v.toString():v));
+  const sql=process.env.DATABASE_URL?database():null;
+  if(sql&&!fresh){const cached=await sql`SELECT value FROM tithe_rpc_cache WHERE id=${key} AND expires_at>now()`;if(cached[0])return cached[0].value as T;}
+  const value=normalize<T>(await chain.readContract({address,functionName:method,args,jsonSafeReturn:true}));
+  if(sql)await sql`INSERT INTO tithe_rpc_cache(id,value,expires_at) VALUES(${key},${JSON.stringify(value)}::jsonb,now()+interval '15 seconds') ON CONFLICT(id) DO UPDATE SET value=EXCLUDED.value,expires_at=EXCLUDED.expires_at`;
+  return value;
 }
 export function executionSucceeded(tx: GenLayerTransaction): boolean {
   if (tx.txExecutionResultName === 'FINISHED_WITH_RETURN' || tx.txExecutionResult === 1) return true;
@@ -42,7 +50,9 @@ export { TransactionStatus };
 export function operationState(tx:GenLayerTransaction):string{
   const raw=String(tx.statusName||tx.status||'PENDING');
   const status=transactionsStatusNumberToName[raw as keyof typeof transactionsStatusNumberToName]||raw;
-  if(['UNDETERMINED','CANCELED'].includes(status))return 'FAILED';
-  if(['ACCEPTED','FINALIZED'].includes(status)&&!executionSucceeded(tx))return 'FAILED';
+  if(status==='CANCELED')return 'CANCELED';
+  if(status==='UNDETERMINED')return 'UNDETERMINED';
+  if(status==='FINALIZED'&&!executionSucceeded(tx))return 'FAILED';
+  if(status==='ACCEPTED'&&!executionSucceeded(tx))return 'ACCEPTED_REJECTED';
   return status;
 }

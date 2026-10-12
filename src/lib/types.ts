@@ -27,5 +27,5 @@ export interface Operation {
 }
 export interface Account {
   address: string; balance_atto: string; credit_atto: string; court_credit_atto: string;
-  bond_atto: string; works: Work[]; licences: Licence[]; claims: Claim[]; operations: Operation[];
+  pages:Record<'works'|'licences'|'claims'|'operations',{offset:number;has_more:boolean}>; bond_atto: string; works: Work[]; licences: Licence[]; claims: Claim[]; operations: Operation[];
 }

@@ -45,4 +45,8 @@ await sql.query(`CREATE UNIQUE INDEX IF NOT EXISTS tithe_active_submission ON ti
 await sql.query(`CREATE INDEX IF NOT EXISTS tithe_recovery_due ON tithe_operations(next_retry_at,created_at) WHERE status NOT IN ('FINALIZED','FAILED','ABORTED','CANCELED')`);
 
 await sql.query(`DROP INDEX IF EXISTS tithe_one_submission`);
+await sql.query(`ALTER TABLE tithe_works ADD COLUMN IF NOT EXISTS deployment text NOT NULL DEFAULT '', ADD COLUMN IF NOT EXISTS generation text NOT NULL DEFAULT ''`);
+await sql.query(`ALTER TABLE tithe_records ADD COLUMN IF NOT EXISTS deployment text NOT NULL DEFAULT '', ADD COLUMN IF NOT EXISTS generation text NOT NULL DEFAULT ''`);
+await sql.query(`CREATE TABLE IF NOT EXISTS tithe_index_state (deployment text PRIMARY KEY,kind text NOT NULL,revision bigint,record_count bigint,cursor bigint NOT NULL DEFAULT 0,generation text,lease_token uuid,lease_until timestamptz,checked_at timestamptz)`);
+await sql.query(`CREATE TABLE IF NOT EXISTS tithe_rpc_cache (id text PRIMARY KEY,value jsonb,expires_at timestamptz NOT NULL DEFAULT now())`);
 console.log('Neon schema is ready. No sample data inserted.');

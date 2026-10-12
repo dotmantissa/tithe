@@ -60,3 +60,11 @@ def test_bad_llm_fails_closed(direct_deploy,direct_vm,direct_bob,external_views,
     with direct_vm.expect_revert('LLM_ERROR'):
         desk.request_licence(work['work_id'],'Commercial reproduction.', expected_terms_version=1, expected_fee_atto='100')
     assert desk.get_count()==0
+
+
+def test_snapshot_tracks_fee_release(direct_deploy,direct_vm,direct_alice,direct_bob,external_views):
+    work,_=external_views;desk=setup_desk(direct_deploy,direct_vm,direct_bob);answer(direct_vm)
+    key=desk.request_licence(work['work_id'],'Commercial use with attribution.',expected_terms_version=1,expected_fee_atto='100')
+    assert desk.get_snapshot()=={'count':1,'revision':1}
+    direct_vm.warp('2026-01-03T12:00:00Z');desk.release_fee(key)
+    assert desk.get_snapshot()=={'count':1,'revision':2}
