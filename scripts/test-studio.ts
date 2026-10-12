@@ -9,23 +9,30 @@ import { TransactionStatus, type Hash, type CalldataEncodable } from 'genlayer-j
 import { accountFor, executionSucceeded, normalize } from '../src/lib/chain';
 import type { Work, Licence, Claim } from '../src/lib/types';
 
-type State={contracts:Record<string,`0x${string}`>;transactions:Record<string,Hash>;signed:Record<string,`0x${string}`>;source?:{url:string;hash:string};results:Record<string,unknown>};
+type State={contracts:Record<string,`0x${string}`>;transactions:Record<string,Hash>;signed:Record<string,`0x${string}`>;source?:{url:string;hash:string};results:Record<string,unknown>;baselines?:Record<string,string>};
 await mkdir('.secrets',{recursive:true});
 const run=process.env.STUDIO_TEST_RUN||'v1';
+const advanceOnly=process.env.STUDIO_TEST_PHASE==='advance';
 if(!/^[a-zA-Z0-9_]{1,40}$/.test(run))throw new Error('Invalid test run identifier');
 const statePath='.secrets/studio-test-state'+(run==='v1'?'':'-'+run)+'.json';
 let state:State;
 try {state=JSON.parse(await readFile(statePath,'utf8'));}catch{state={contracts:{},transactions:{},signed:{},results:{}};}
 async function save(){await writeFile(statePath+'.tmp',JSON.stringify(state,null,2)+'\n',{mode:0o600});await rename(statePath+'.tmp',statePath);}
 const creator=accountFor('tithe:integration:creator:'+run),lab=accountFor('tithe:integration:lab:'+run);
+class SavedForBroadcast extends Error {}
 function clientFor(who:typeof creator,operation:string){
   const sign=who.signTransaction;
   return createClient({chain:studionet,account:{...who,signTransaction:async(...args:Parameters<typeof sign>)=>{
-    const raw=await sign(...args);state.signed[operation]=raw;state.transactions[operation]=keccak256(raw) as Hash;await save();return raw;
+    const raw=await sign(...args);state.signed[operation]=raw;state.transactions[operation]=keccak256(raw) as Hash;await save();throw new SavedForBroadcast();
   }}});
+}
+async function stage(operation:string,submit:()=>Promise<unknown>){
+ try{await submit();}catch(error){if(!(error instanceof SavedForBroadcast))throw error;}
+ assert.ok(state.signed[operation]);await reader.sendRawTransaction({serializedTransaction:state.signed[operation]});
 }
 const reader=createClient({chain:studionet});
 async function retry<T>(action:()=>Promise<T>):Promise<T>{for(let attempt=0;;attempt++){try{return await action();}catch{if(attempt>=5)throw new Error('A real service is temporarily unavailable. Resume the saved integration run.');await new Promise(resolve=>setTimeout(resolve,5000));}}}
+async function baseline(operation:string,address:`0x${string}`){state.baselines||={};if(!state.baselines[operation]){state.baselines[operation]=(await balance(address)).toString();await save();}return BigInt(state.baselines[operation]);}
 const balance=(address:`0x${string}`)=>retry(()=>reader.getBalance({address}));
 async function receipt(operation:string,final=false){
   const hash=state.transactions[operation];
@@ -48,7 +55,7 @@ async function deploy(name:string,file:string,args:CalldataEncodable[]){
   if(state.contracts[name]&&state.results[operation])return state.contracts[name];
   if(!state.transactions[operation]){
     console.log('Deploying isolated '+name+' test contract');
-    await clientFor(creator,operation).deployContract({code:await readFile('contracts/'+file+'.py','utf8'),args});
+    await stage(operation,async()=>clientFor(creator,operation).deployContract({code:await readFile('contracts/'+file+'.py','utf8'),args}));
   }
   const tx=await receipt(operation);
   const address=tx.to_address||tx.recipient;
@@ -61,11 +68,12 @@ async function call<T>(name:string,method:string,args:CalldataEncodable[]=[]){re
 async function write(operation:string,who:typeof creator,name:string,method:string,args:CalldataEncodable[]=[],value=0n){
  if(state.results[operation])return;
  if(value>0n){
+  const funding=operation+':fund';if(state.transactions[funding]&&!state.results[funding])await receipt(funding,true);
   const credit=await call<{credit_atto:string}>(name,'get_account',[who.address]);
   const shortfall=value-BigInt(credit.credit_atto);
-  if(shortfall>0n){const funding=operation+':fund';if(!state.transactions[funding])await clientFor(who,funding).writeContract({address:state.contracts[name],functionName:'fund_credit',args:[],value:shortfall});await receipt(funding,true);}
+  if(shortfall>0n){const funding=operation+':fund';if(!state.transactions[funding])await stage(funding,async()=>clientFor(who,funding).writeContract({address:state.contracts[name],functionName:'fund_credit',args:[],value:shortfall}));await receipt(funding,true);}
  }
- if(!state.transactions[operation]){console.log('Submitting '+operation);await clientFor(who,operation).writeContract({address:state.contracts[name],functionName:method,args,value:0n});}
+ if(!state.transactions[operation]){console.log('Submitting '+operation);await stage(operation,async()=>clientFor(who,operation).writeContract({address:state.contracts[name],functionName:method,args,value:0n}));}
  if(state.signed[operation]){try{await retry(()=>reader.getTransaction({hash:state.transactions[operation]}));}catch{await reader.sendRawTransaction({serializedTransaction:state.signed[operation]});}}
  return receipt(operation);
 }
@@ -82,7 +90,7 @@ async function artifact(url:string){const response=await fetch(url,{signal:Abort
 const text=await artifact('https://raw.githubusercontent.com/genlayerlabs/genlayer-studio/main/examples/contracts/llm_erc20.py');
 const other=await artifact('https://raw.githubusercontent.com/genlayerlabs/genlayer-studio/main/examples/contracts/user_storage.py');
 const image=await artifact('https://raw.githubusercontent.com/python-pillow/Pillow/main/Tests/images/hopper.png');
-const imageOther=await artifact('https://raw.githubusercontent.com/python-pillow/Pillow/main/Tests/images/hopper.webp');
+const imageOther=await artifact('https://raw.githubusercontent.com/python-pillow/Pillow/main/Tests/images/hopper_webp.png');
 const permitted='Research and commercial copying of all or part of this work are permitted without attribution. Commercial use requires the published commercial fee. Research use is free.';
 const prohibited='All copying, quotation and commercial use of this work are prohibited. Refuse every request to copy this work.';
 await write('register:text',creator,'registry','register_work',[text.url,text.hash,permitted,'{"research":"0","commercial":"100"}','commercial','Isolated text verification']);
@@ -93,13 +101,13 @@ async function waitUntil(epoch:number){for(;;){const clock=await call<{unix_seco
 await waitUntil(paid.release_at);
 await write('release:paid',creator,'desk','release_fee',[paid.licence_id]);
 if(!state.transactions['withdraw:paid'])assert.equal((await call<{credit_atto:string}>('desk','get_account',[creator.address])).credit_atto,'100');
-if(!state.results['withdraw:paid:balance']){const before=await balance(creator.address);await write('withdraw:paid',creator,'desk','withdraw');await receipt('withdraw:paid',true);const after=await balance(creator.address);assert.equal(after-before,100n);state.results['withdraw:paid:balance']={received_atto:'100'};await save();}
+if(!state.results['withdraw:paid:balance']){const before=await baseline('withdraw:paid',creator.address);await write('withdraw:paid',creator,'desk','withdraw');await receipt('withdraw:paid',true);const after=await balance(creator.address);assert.equal(after-before,100n);state.results['withdraw:paid:balance']={received_atto:'100'};await save();}
 if(!state.results['failed-action:balance']){
- const funding='failed-action:fund';if(!state.transactions[funding])await clientFor(lab,funding).writeContract({address:desk,functionName:'fund_credit',args:[],value:100n});await receipt(funding,true);
- const failure='failed-action';if(!state.transactions[failure])await clientFor(lab,failure).writeContract({address:desk,functionName:'request_licence',args:[work.work_id,'Commercial copying with an intentionally stale consent version.','commercial',99,'100','studio-failure-safety-'+run],value:0n});
+ const funding='failed-action:fund';if(!state.transactions[funding])await stage(funding,async()=>clientFor(lab,funding).writeContract({address:desk,functionName:'fund_credit',args:[],value:100n}));await receipt(funding,true);
+ const failure='failed-action';if(!state.transactions[failure])await stage(failure,async()=>clientFor(lab,failure).writeContract({address:desk,functionName:'request_licence',args:[work.work_id,'Commercial copying with an intentionally stale consent version.','commercial',99,'100','studio-failure-safety-'+run],value:0n}));
  const tx=await reader.waitForTransactionReceipt({hash:state.transactions[failure],status:TransactionStatus.FINALIZED,interval:10000,retries:90});assert.equal(executionSucceeded(tx),false);
  assert.equal((await call<{credit_atto:string}>('desk','get_account',[lab.address])).credit_atto,'100');
- const before=await balance(lab.address);await write('failed-action:withdraw',lab,'desk','withdraw');await receipt('failed-action:withdraw',true);assert.equal(await balance(lab.address)-before,100n);
+ const before=await baseline('failed-action:withdraw',lab.address);await write('failed-action:withdraw',lab,'desk','withdraw');await receipt('failed-action:withdraw',true);assert.equal(await balance(lab.address)-before,100n);
  state.results[failure]={hash:state.transactions[failure],status:'FINALIZED',execution:'expected rollback with zero attached value'};state.results['failed-action:balance']={recovered_atto:'100'};await save();
 }
 // A real nonidentical text pair exercises ONNX rather than the identical-body fast path.
@@ -110,13 +118,13 @@ await write('rule:distinct',creator,'court','rule',[distinct.claim_id]);
 let ruled=await call<Claim>('court','get_claim',[distinct.claim_id]);assert.ok(ruled.ruling);assert.ok(ruled.ruling.distance_ppm>0);assert.ok(['NO_USE','DERIVATIVE_WITHIN_TERMS'].includes(ruled.ruling.decision));assert.equal(ruled.ruling.damages_band,'NONE');
 await write('appeal:distinct',creator,'court','appeal_claim',[distinct.claim_id],200n);
 if(!state.transactions['review:distinct']){const pending=await call<Claim>('court','get_claim',[distinct.claim_id]);assert.equal(pending.status,'REVIEW_PENDING');assert.ok(pending.ruling);}
-await write('review:distinct',lab,'court','rule',[distinct.claim_id]);
-ruled=await call<Claim>('court','get_claim',[distinct.claim_id]);assert.equal(ruled.status,'RULED');assert.equal(ruled.appeals?.[0].outcome,'REVIEWED');
+if(!advanceOnly){await write('review:distinct',lab,'court','rule',[distinct.claim_id]);
+ruled=await call<Claim>('court','get_claim',[distinct.claim_id]);assert.equal(ruled.status,'RULED');assert.equal(ruled.appeals?.[0].outcome,'REVIEWED');}
 await write('terms:prohibit',creator,'registry','update_terms',[work.work_id,prohibited,'{"commercial":"100"}','commercial']);
 const current=await call<Work>('registry','get_work',[work.work_id]);assert.equal(current.version,2);
 await write('refuse:paid',lab,'desk','request_licence',[work.work_id,'Commercial copying of the full work despite the prohibition.','commercial',2,'100','studio-refused-request-'+run],100n);
 licences=await call<Licence[]>('desk','list_licences',[0,50]);assert.equal(licences.find(l=>l.terms_version===2)?.decision,'REFUSE');
-if(!state.results['withdraw:refused:balance']){const before=await balance(lab.address);await write('withdraw:refused',lab,'desk','withdraw');await receipt('withdraw:refused',true);assert.equal(await balance(lab.address)-before,100n);state.results['withdraw:refused:balance']={received_atto:'100'};await save();}
+if(!state.results['withdraw:refused:balance']){const before=await baseline('withdraw:refused',lab.address);await write('withdraw:refused',lab,'desk','withdraw');await receipt('withdraw:refused',true);assert.equal(await balance(lab.address)-before,100n);state.results['withdraw:refused:balance']={received_atto:'100'};await save();}
 const usedAt=current.terms.effective_at;
 await write('claim:grant',creator,'court','file_claim',[work.work_id,text.url,text.hash,lab.address,usedAt,2,'studio-durable-grant-'+run],100n);
 claims=await call<Claim[]>('court','list_claims',[0,50]);const grant=claims.find(c=>c.output_hash===text.hash)!;
@@ -139,15 +147,16 @@ claims=await call<Claim[]>('court','list_claims',[0,50]);const prohibitedClaim=c
 await write('respond:prohibited',lab,'court','respond',[prohibitedClaim.claim_id,'','',usedAt,2,''],100n);
 await write('rule:prohibited',creator,'court','rule',[prohibitedClaim.claim_id]);
 const prohibitedRuling=await call<Claim>('court','get_claim',[prohibitedClaim.claim_id]);assert.equal(prohibitedRuling.ruling?.decision,'USE');assert.ok(['LOW','MEDIUM','HIGH'].includes(prohibitedRuling.ruling!.damages_band));
+if(advanceOnly){console.log('Independent grant, image and prohibited-use cases verified; the saved review will be resumed separately.');process.exit(0);}
 for(const c of [distinct,grant,visualClaim,prohibitedClaim]){const latest=await call<Claim>('court','get_claim',[c.claim_id]);await waitUntil(latest.settle_after!);await write('settle:'+c.claim_id,creator,'court','settle',[c.claim_id]);assert.equal((await call<Claim>('court','get_claim',[c.claim_id])).status,'SETTLED');}
 assert.equal((await call<{escrow_atto:string}>('court','get_account',[creator.address])).escrow_atto,'0');
 for(const [name,who] of [['creator',creator],['lab',lab]] as const){
  const op='withdraw:court:'+name;
- if(!state.results[op+':balance']){const credit=await call<{credit_atto:string}>('court','get_account',[who.address]);const before=await balance(who.address);await write(op,who,'court','withdraw');await receipt(op,true);assert.equal(await balance(who.address)-before,BigInt(credit.credit_atto));state.results[op+':balance']={received_atto:credit.credit_atto};await save();}
+ if(!state.results[op+':balance']){const credit=await call<{credit_atto:string}>('court','get_account',[who.address]);const before=await baseline(op,who.address);await write(op,who,'court','withdraw');await receipt(op,true);assert.equal(await balance(who.address)-before,BigInt(credit.credit_atto));state.results[op+':balance']={received_atto:credit.credit_atto};await save();}
  assert.equal((await call<{credit_atto:string}>('court','get_account',[who.address])).credit_atto,'0');
 }
 assert.equal(await balance(state.contracts.court),0n);
 const sourceHashes:Record<string,string>={};
 for(const [name,file] of [['registry','work_registry'],['desk','licence_desk'],['court','infringement_court']]){const local=await readFile('contracts/'+file+'.py','utf8');assert.equal(await reader.getContractCode(state.contracts[name]),local);sourceHashes[name]=createHash('sha256').update(local).digest('hex');}
 await writeFile('deployments/studio-verification.json',JSON.stringify({source_hashes:sourceHashes,network:'GenLayer Studio',checked_at:new Date().toISOString(),isolated_contracts:state.contracts,checks:state.results,nonidentical_text_ruling:ruled.ruling,image_ruling:visualRuling.ruling,durable_grant_ruling:grantRuling.ruling,prohibited_ruling:prohibitedRuling.ruling,notes:['Real public evidence, live independent model consensus and ONNX embeddings.','Isolated contracts use 10 second fee escrow and 1200 second appeals; application uses one day and two days.','Native funding is credited before adjudication; an intentionally reverted zero-value action retained credit and its full native withdrawal was verified.','All isolated court funds settled and withdrawn with exact native balance checks.','No sample works or licences registered in application contracts.']},null,2)+'\n');
-console.log('Studio integration passed: paid approval and release, refusal refund, distinct text embeddings, live PNG/WebP vision, durable grant, bonded review, damages, timed settlement and native withdrawals.');
+console.log('Studio integration passed: paid approval and release, refusal refund, distinct text embeddings, live PNG vision, durable grant, bonded review, damages, timed settlement and native withdrawals.');
