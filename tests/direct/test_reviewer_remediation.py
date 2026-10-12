@@ -151,3 +151,14 @@ def test_resolved_and_immaterial_context_labels_do_not_force_consensus_failure(d
     assert sys.modules[c.__module__].same_ruling(ruling,other)
     other['facts']['competing_product']='UNRESOLVED'
     assert not sys.modules[c.__module__].same_ruling(ruling,other)
+
+
+def test_insufficient_rulings_allow_different_nonfinancial_context_flags(direct_deploy,direct_vm,direct_alice):
+    c=court(direct_deploy,direct_vm,direct_alice)
+    ruling={**panel({'decision':'INSUFFICIENT_EVIDENCE','clause':'C1','damages_band':'NONE'}),'distance_ppm':0,'policy_hash':''}
+    other={**ruling,'facts':{**ruling['facts'],'commercial_activity':'UNRESOLVED'}}
+    assert sys.modules[c.__module__].same_ruling(ruling,other)
+    other['facts']['reproduction']='COPYING'
+    assert not sys.modules[c.__module__].same_ruling(ruling,other)
+    other={**ruling,'terms_basis':'LICENCE_TERMS'}
+    assert not sys.modules[c.__module__].same_ruling(ruling,other)
