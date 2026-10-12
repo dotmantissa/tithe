@@ -1,14 +1,14 @@
 {
-  "verified_at": "2026-10-12T00:18:01.597989+00:00",
+  "verified_at": "2026-10-12T12:51:15.333790+00:00",
   "provider": "Vercel",
   "project": "tithe",
   "production_url": "https://tithe-desk.vercel.app",
   "verified_deployment": {
-    "id": "dpl_9u2UqsDd15nBiYi84fgwyHxJSuX3",
-    "url": "https://tithe-dcronwb71-mantissas-projects.vercel.app",
+    "id": "dpl_51nuZyMuakVNAHCynRcPiyNuKjRe",
+    "url": "https://tithe-c4o2r9rrn-mantissas-projects.vercel.app",
     "status": "READY",
     "source": "git",
-    "application_commit": "58b8205d4670ee4ce8140a94268640213852e5af"
+    "application_commit": "25c1f26f3972d3e17321a4463887c84d70e19f1d"
   },
   "repository": {
     "url": "https://github.com/dotmantissa/tithe",
@@ -16,15 +16,18 @@
     "automatic_deployments": true
   },
   "checks": {
-    "backend_tests_passed": 53,
+    "backend_tests_passed": 111,
     "browser_tests_passed": 10,
     "live_api_and_mcp": "passed",
     "privy_email_modal": "passed",
     "authenticated_maintenance": "passed",
     "credential_scan_public_assets": 26,
     "private_file_paths": "404",
-    "git_ci_run": 38180785199,
-    "git_ci_conclusion": "success"
+    "git_ci_run": 38247977063,
+    "git_ci_conclusion": "success",
+    "contract_tests_passed": 108,
+    "mcp_tools_verified": 12,
+    "deployment_source_matches": true
   },
   "maintenance": {
     "path": "/api/maintenance",
@@ -34,5 +37,10 @@
   "limits": [
     "Human email OTP completion was not automated.",
     "The scheduler configuration and endpoint were verified; a scheduled invocation has not yet occurred."
-  ]
+  ],
+  "contracts": {
+    "registry": "0x438FfB8a6DEf8ab4749214644367215430082bAd",
+    "desk": "0xB20CBB4F775F751c4d42fd538cc5e505fb19ab8C",
+    "court": "0x8D82844599dA2385eaa6a164A7b9dD7726576C77"
+  }
 }
