@@ -13,8 +13,8 @@ beforeEach(()=>{
   return {work_id:'one',creator:'creator',title:'Single',kind:'text'};
  });
 });
-it('prunes removed records after an independently checked stable snapshot',async()=>{
- const result=await syncIndex();expect(result.completed).toBe(3);expect(m.sql.mock.calls.filter(([s])=>s.join('').startsWith('DELETE')).length).toBe(3);
+it('completes empty append-only collections without inferring deletion',async()=>{
+ const result=await syncIndex();expect(result.completed).toBe(3);expect(m.sql.mock.calls.filter(([s])=>s.join('').startsWith('DELETE')).length).toBe(0);
 });
 it('never deletes records when the snapshot changes mid scan',async()=>{
  m.changed=true;await syncIndex();expect(m.sql.mock.calls.some(([s])=>s.join('').startsWith('DELETE'))).toBe(false);
@@ -33,3 +33,26 @@ it('does not interpret provider failure as authoritative removal',async()=>{
 });
 
 it('rejects a stale page writer after its lease was replaced',async()=>{m.count=50;m.sql.mockImplementation(async(s:TemplateStringsArray)=>{const q=s.join('');if(q.includes('RETURNING *'))return [{cursor:0,revision:null,generation:null}];if(q.includes('RETURNING deployment'))return [{deployment:'registry'}];return [];});await expect(syncIndex()).rejects.toThrow('Index lease lost before page commit');expect(m.sql.mock.calls.some(([s])=>s.join('').startsWith('DELETE'))).toBe(false);});
+
+it('reaches all 201 records across invocations despite a revision change every time',async()=>{
+ const state:Record<string,Record<string,unknown>>={};let revision=1,count=201;
+ m.sql.mockImplementation(async(s:TemplateStringsArray,...v:unknown[])=>{
+  const q=s.join('');
+  if(q.includes('RETURNING *')){const deployment=String(v[1]);return [state[deployment]||{cursor:0,revision:null,record_count:null,generation:null}];}
+  if(q.includes('SET cursor=')&&q.includes('generation=')){state[String(v[4])]={cursor:v[0],generation:v[1],revision:v[2],record_count:v[3]};return [];}
+  if(q.includes('SET cursor=')&&!q.includes('cursor=0')){state[String(v[1])].cursor=v[0];return [];}
+  if(q.includes('SET cursor=0')){state[String(v[0])].cursor=0;return [{deployment:v[0]}];}
+  if(q.includes('RETURNING deployment'))return [{deployment:v[0]}];
+  if(q.includes('RETURNING id')){const docs=v.find(x=>typeof x==='string'&&x.startsWith('['));return docs?JSON.parse(String(docs)).map((x:{id:string})=>({id:x.id})):[];}
+  return [];
+ });
+ m.read.mockImplementation(async(c:string,method:string,args:number[])=>{
+  if(method==='get_snapshot')return {count:c==='registry'?count:0,revision};
+  return Array.from({length:Math.min(args[1],count-args[0])},(_,i)=>({work_id:'work'+(args[0]+i),title:'Chain work',creator:'creator',kind:'text'}));
+ });
+ await syncIndex();revision++;count=205;await syncIndex();revision++;count=209;const result=await syncIndex();
+ const offsets=m.read.mock.calls.filter(([c,method])=>c==='registry'&&method==='list_works').map(([, ,args])=>args[0]);
+ expect(offsets).toEqual([0,50,100,150,200]);expect(result.completed).toBe(3);expect(state.registry.cursor).toBe(0);
+ revision++;await syncIndex();expect(m.read.mock.calls.at(-3)?.[1]).toBeDefined();
+ expect(m.sql.mock.calls.some(([s])=>s.join('').startsWith('DELETE'))).toBe(false);
+});

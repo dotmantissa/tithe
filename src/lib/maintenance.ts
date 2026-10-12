@@ -1,3 +1,4 @@
+import {withRpcClass} from './rpc-context';
 import {database} from './db';
 import {refreshOperation,resumeOperation,abortExpiredUnsent} from './operations';
 import {syncIndex} from './indexer';
@@ -10,7 +11,7 @@ export async function maintain(){
   try{if(['SIGNED','SUBMISSION_UNCERTAIN','RECOVERING'].includes(String(row.status)))await resumeOperation(String(row.subject),String(row.id));else await refreshOperation(String(row.subject),String(row.id));checked++;}
   catch{interrupted++;await sql`UPDATE tithe_operations SET next_retry_at=now()+interval '5 minutes' WHERE id=${row.id}`;}
  }
- const index=Date.now()<deadline-30000?await syncIndex({deadline,pages:6}):{processed:0,completed:0};
+ const index=Date.now()<deadline-30000?await withRpcClass('maintenance',()=>syncIndex({deadline,pages:6})):{processed:0,completed:0};
  await sql`DELETE FROM tithe_limits WHERE created_at<now()-interval '2 days'`;
  await sql`DELETE FROM tithe_rpc_events WHERE created_at<now()-interval '1 day'`;
  await sql`DELETE FROM tithe_rpc_cache WHERE expires_at<now()-interval '1 day'`;

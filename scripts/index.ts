@@ -1,3 +1,4 @@
+import {withRpcClass} from '../src/lib/rpc-context';
 import {syncIndex} from '../src/lib/indexer';
-const progress=await syncIndex();
-console.log(`Index advanced by ${progress.processed} records; ${progress.completed} collections completed a stable snapshot. Run again to continue saved pages.`);
+const progress=await withRpcClass('maintenance',()=>syncIndex());
+console.log(`Index advanced by ${progress.processed} records; ${progress.completed} append-only prefixes completed. Run again to continue saved pages.`);

@@ -1,0 +1,29 @@
+name: Reconcile payments and rebuild the index
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+permissions: {}
+concurrency:
+  group: tithe-maintenance
+  cancel-in-progress: false
+jobs:
+  maintain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Run authenticated maintenance
+        env:
+          TITHE_CRON_SECRET: ${{ secrets.TITHE_CRON_SECRET }}
+        run: |
+          test -n "$TITHE_CRON_SECRET"
+          curl --silent --show-error --fail --max-time 240 \
+            --header "Authorization: Bearer $TITHE_CRON_SECRET" \
+            --output /tmp/tithe-maintenance.json \
+            https://tithe-desk.vercel.app/api/maintenance
+          python3 - <<'PY'
+          import json
+          with open('/tmp/tithe-maintenance.json') as response:
+              result = json.load(response)
+          print({key: result.get(key) for key in ('checked', 'interrupted', 'deferred', 'index')})
+          PY
