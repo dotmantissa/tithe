@@ -4,14 +4,16 @@ import {database} from './db';
 import type {Work,Licence,Claim} from './types';
 const configs=[['registry','list_works','work'],['desk','list_licences','licence'],['court','list_claims','claim']] as const;
 type Record=Work|Licence|Claim;
-export async function storeRecords(contract:ContractName,records:Record[],generation:string){
+export async function storeRecords(contract:ContractName,records:Record[],generation:string,fence=''){
  const sql=database(),deployment=addresses[contract];
  if(contract==='registry'){
   const docs=records.map(r=>{const w=r as Work;return {id:w.work_id,creator:w.creator,title:w.title,kind:w.kind,document:w};});
-  await sql`INSERT INTO tithe_works(id,creator,title,kind,document,deployment,generation) SELECT x.id,x.creator,x.title,x.kind,x.document,${deployment},${generation} FROM jsonb_to_recordset(${JSON.stringify(docs)}::jsonb) AS x(id text,creator text,title text,kind text,document jsonb) ON CONFLICT(id) DO UPDATE SET creator=EXCLUDED.creator,title=EXCLUDED.title,kind=EXCLUDED.kind,document=EXCLUDED.document,deployment=EXCLUDED.deployment,generation=CASE WHEN EXCLUDED.generation LIKE 'target:%' AND tithe_works.deployment=EXCLUDED.deployment THEN tithe_works.generation ELSE EXCLUDED.generation END,indexed_at=now()`;
+  const written=await sql`INSERT INTO tithe_works(id,creator,title,kind,document,deployment,generation) SELECT x.id,x.creator,x.title,x.kind,x.document,${deployment},${generation} FROM jsonb_to_recordset(${JSON.stringify(docs)}::jsonb) AS x(id text,creator text,title text,kind text,document jsonb) WHERE ${fence}='' OR EXISTS(SELECT 1 FROM tithe_index_state WHERE deployment=${deployment} AND lease_token::text=${fence} AND lease_until>now()) ON CONFLICT(id) DO UPDATE SET creator=EXCLUDED.creator,title=EXCLUDED.title,kind=EXCLUDED.kind,document=EXCLUDED.document,deployment=EXCLUDED.deployment,generation=CASE WHEN EXCLUDED.generation LIKE 'target:%' AND tithe_works.deployment=EXCLUDED.deployment THEN tithe_works.generation ELSE EXCLUDED.generation END,indexed_at=now() RETURNING id`;
+  if(fence&&written.length!==records.length)throw new Error('Index lease lost before page commit');
  }else{
   const docs=records.map(r=>contract==='desk'?{id:(r as Licence).licence_id,kind:'licence',account:(r as Licence).holder,document:r}:{id:(r as Claim).claim_id,kind:'claim',account:(r as Claim).claimant,document:r});
-  await sql`INSERT INTO tithe_records(id,kind,account,document,deployment,generation) SELECT x.id,x.kind,x.account,x.document,${deployment},${generation} FROM jsonb_to_recordset(${JSON.stringify(docs)}::jsonb) AS x(id text,kind text,account text,document jsonb) ON CONFLICT(id) DO UPDATE SET account=EXCLUDED.account,document=EXCLUDED.document,deployment=EXCLUDED.deployment,generation=CASE WHEN EXCLUDED.generation LIKE 'target:%' AND tithe_records.deployment=EXCLUDED.deployment THEN tithe_records.generation ELSE EXCLUDED.generation END,indexed_at=now()`;
+  const written=await sql`INSERT INTO tithe_records(id,kind,account,document,deployment,generation) SELECT x.id,x.kind,x.account,x.document,${deployment},${generation} FROM jsonb_to_recordset(${JSON.stringify(docs)}::jsonb) AS x(id text,kind text,account text,document jsonb) WHERE ${fence}='' OR EXISTS(SELECT 1 FROM tithe_index_state WHERE deployment=${deployment} AND lease_token::text=${fence} AND lease_until>now()) ON CONFLICT(id) DO UPDATE SET account=EXCLUDED.account,document=EXCLUDED.document,deployment=EXCLUDED.deployment,generation=CASE WHEN EXCLUDED.generation LIKE 'target:%' AND tithe_records.deployment=EXCLUDED.deployment THEN tithe_records.generation ELSE EXCLUDED.generation END,indexed_at=now() RETURNING id`;
+  if(fence&&written.length!==records.length)throw new Error('Index lease lost before page commit');
  }
 }
 export async function reconcileTarget(contract:ContractName,id:string){
@@ -35,18 +37,22 @@ export async function syncIndex(options:{deadline?:number;pages?:number}={}){
    await sql`UPDATE tithe_index_state SET cursor=${cursor},generation=${generation},revision=${snapshot.revision},record_count=${snapshot.count} WHERE deployment=${deployment} AND lease_token=${lease}`;
    let contractPages=0;
    while(cursor<snapshot.count&&contractPages<2&&remaining>0&&Date.now()<deadline){
+    const renewed=await sql`UPDATE tithe_index_state SET lease_until=now()+interval '80 seconds' WHERE deployment=${deployment} AND lease_token=${lease} AND lease_until>now() RETURNING deployment`;
+    if(!renewed[0])throw new Error('Index lease lost');
     const records=await read<Record[]>(contract,method,[cursor,Math.min(50,snapshot.count-cursor)],true);
     if(records.length!==Math.min(50,snapshot.count-cursor))throw new Error('Snapshot page changed');
-    await storeRecords(contract,records,generation);cursor+=records.length;remaining--;contractPages++;processed+=records.length;
+    await storeRecords(contract,records,generation,lease);cursor+=records.length;remaining--;contractPages++;processed+=records.length;
     await sql`UPDATE tithe_index_state SET cursor=${cursor} WHERE deployment=${deployment} AND lease_token=${lease}`;
    }
    if(cursor===snapshot.count){
+    const renewed=await sql`UPDATE tithe_index_state SET lease_until=now()+interval '80 seconds' WHERE deployment=${deployment} AND lease_token=${lease} AND lease_until>now() RETURNING deployment`;
+    if(!renewed[0])throw new Error('Index lease lost before snapshot completion');
     const end=await read<{count:number;revision:number}>(contract,'get_snapshot',[],true);
     if(end.count===snapshot.count&&end.revision===snapshot.revision){
      // Check fencing in the same statement that deletes obsolete index entries.
      if(kind==='work')await sql`DELETE FROM tithe_works WHERE deployment=${deployment} AND generation<>${generation} AND EXISTS(SELECT 1 FROM tithe_index_state WHERE deployment=${deployment} AND lease_token=${lease} AND lease_until>now())`;
      else await sql`DELETE FROM tithe_records WHERE deployment=${deployment} AND generation<>${generation} AND EXISTS(SELECT 1 FROM tithe_index_state WHERE deployment=${deployment} AND lease_token=${lease} AND lease_until>now())`;
-     await sql`UPDATE tithe_index_state SET cursor=0,checked_at=now() WHERE deployment=${deployment} AND lease_token=${lease}`;completed++;
+     const finished=await sql`UPDATE tithe_index_state SET cursor=0,checked_at=now() WHERE deployment=${deployment} AND lease_token=${lease} AND lease_until>now() RETURNING deployment`;if(!finished[0])throw new Error('Index lease lost before completion');completed++;
     }else await sql`UPDATE tithe_index_state SET cursor=0,revision=NULL WHERE deployment=${deployment} AND lease_token=${lease}`;
    }
   }finally{await sql`UPDATE tithe_index_state SET lease_token=NULL,lease_until=NULL WHERE deployment=${deployment} AND lease_token=${lease}`;}

@@ -10,11 +10,14 @@ if(!globals[symbol]){
   const url=typeof input==='string'?input:input instanceof URL?input.href:input.url;
   if(url!==endpoint||!process.env.DATABASE_URL)return original(input,init);
   const {database}=await import('./db'),{AppError}=await import('./errors');const sql=database();
-  const minute=Math.floor(Date.now()/60000),hour=Math.floor(Date.now()/3600000);
-  for(const [scope,bucket,max] of [['studio:minute',minute,45],['studio:hour',hour,420]] as const){
-   const rows=await sql`INSERT INTO tithe_limits(scope,bucket) VALUES(${scope},${bucket}) ON CONFLICT(scope,bucket) DO UPDATE SET count=tithe_limits.count+1 RETURNING count`.catch(()=>{throw new AppError('The network budget service is temporarily unavailable. Saved payments remain recoverable.',503);});
-   if(Number(rows[0].count)>max)throw new AppError('Studio is busy. Your saved requests will wait safely for the next network window.',429);
-  }
+  // A transaction lock serializes reservations; each SQL statement gets a
+  // fresh snapshot after the lock. Fixed clock buckets can exceed a rolling
+  // provider limit near the hour boundary, so meter the actual recent calls.
+  const reservation=await sql.transaction([
+   sql`SELECT pg_advisory_xact_lock(619990042)`,
+   sql`INSERT INTO tithe_rpc_events(created_at) SELECT now() WHERE (SELECT count(*) FROM tithe_rpc_events WHERE created_at>now()-interval '1 hour')<400 AND (SELECT count(*) FROM tithe_rpc_events WHERE created_at>now()-interval '1 minute')<35 RETURNING id`,
+  ]).catch(()=>{throw new AppError('The network budget service is temporarily unavailable. Saved payments remain recoverable.',503);});
+  if(!reservation[1].length)throw new AppError('Studio is busy. Saved requests will wait safely for the next network window.',429);
   return original(input,{...init,signal:init?.signal||AbortSignal.timeout(25000)});
  };
 }

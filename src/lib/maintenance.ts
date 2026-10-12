@@ -12,6 +12,7 @@ export async function maintain(){
  }
  const index=Date.now()<deadline-30000?await syncIndex({deadline,pages:6}):{processed:0,completed:0};
  await sql`DELETE FROM tithe_limits WHERE created_at<now()-interval '2 days'`;
+ await sql`DELETE FROM tithe_rpc_events WHERE created_at<now()-interval '1 day'`;
  await sql`DELETE FROM tithe_rpc_cache WHERE expires_at<now()-interval '1 day'`;
  return {checked,interrupted,deferred:pending.length-checked-interrupted,index};
 }

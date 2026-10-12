@@ -60,7 +60,7 @@ export async function handle(request: Request, segments: string[]) {
       checkOrigin(request);
       if(path==='sync') {
         if(request.headers.get('authorization')!==`Bearer ${process.env.INDEXER_SECRET}` || !process.env.INDEXER_SECRET) throw new AppError('Unauthorized.',401);
-        await syncIndex();return json({synced:true});
+        const progress=await syncIndex();return json({synced:progress.completed===3,...progress});
       }
       const subject=await authenticate(request,path!=='keys');
       if(segments[0]==='operations'&&segments[1]&&segments[2]==='resume'){await limit(subject+':resume',5);return json(await resumeOperation(subject,z.string().uuid().parse(segments[1])),202);}

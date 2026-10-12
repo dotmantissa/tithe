@@ -50,5 +50,8 @@ await sql.query(`ALTER TABLE tithe_records ADD COLUMN IF NOT EXISTS deployment t
 await sql.query(`CREATE TABLE IF NOT EXISTS tithe_index_state (deployment text PRIMARY KEY,kind text NOT NULL,revision bigint,record_count bigint,cursor bigint NOT NULL DEFAULT 0,generation text,lease_token uuid,lease_until timestamptz,checked_at timestamptz)`);
 await sql.query(`ALTER TABLE tithe_operations ADD COLUMN IF NOT EXISTS phase text NOT NULL DEFAULT 'ACTION', ADD COLUMN IF NOT EXISTS fund_hash text, ADD COLUMN IF NOT EXISTS fund_atto text NOT NULL DEFAULT '0', ADD COLUMN IF NOT EXISTS action_args jsonb, ADD COLUMN IF NOT EXISTS consent_seal text`);
 await sql.query(`CREATE UNIQUE INDEX IF NOT EXISTS tithe_serial_submission ON tithe_operations(subject) WHERE status IN ('SUBMITTING','SIGNED','SUBMISSION_UNCERTAIN','RECOVERING') OR (phase='FUNDING' AND status NOT IN ('FAILED','CANCELED','ABORTED'))`);
+await sql.query(`CREATE TABLE IF NOT EXISTS tithe_rpc_events(id bigserial PRIMARY KEY,created_at timestamptz NOT NULL DEFAULT now())`);
+await sql.query(`CREATE INDEX IF NOT EXISTS tithe_rpc_events_time ON tithe_rpc_events(created_at)`);
 await sql.query(`CREATE TABLE IF NOT EXISTS tithe_rpc_cache (id text PRIMARY KEY,value jsonb,expires_at timestamptz NOT NULL DEFAULT now())`);
+await sql.query(`INSERT INTO tithe_rpc_events(created_at) SELECT created_at FROM tithe_limits CROSS JOIN LATERAL generate_series(1,LEAST(count,420)) WHERE scope='studio:hour' AND created_at>now()-interval '1 hour' AND NOT EXISTS(SELECT 1 FROM tithe_rpc_events)`);
 console.log('Neon schema is ready. No sample data inserted.');

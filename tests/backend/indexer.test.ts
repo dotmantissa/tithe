@@ -5,7 +5,7 @@ vi.mock('../../src/lib/db',()=>({database:()=>m.sql}));
 import {syncIndex,reconcileTarget} from '../../src/lib/indexer';
 beforeEach(()=>{
  vi.clearAllMocks();m.changed=false;m.count=0;
- m.sql.mockImplementation(async(s:TemplateStringsArray)=>s.join('').includes('RETURNING *')?[{cursor:0,revision:null,generation:null}]:[]);
+ m.sql.mockImplementation(async(s:TemplateStringsArray,...values:unknown[])=>{const q=s.join('');if(q.includes('RETURNING *'))return [{cursor:0,revision:null,generation:null}];if(q.includes('RETURNING deployment'))return [{deployment:'registry'}];if(q.includes('RETURNING id')){const docs=values.find(v=>typeof v==='string'&&v.startsWith('['));return docs?JSON.parse(String(docs)).map((v:{id:string})=>({id:v.id})):[];}return [];});
  let snaps=0;
  m.read.mockImplementation(async(_c:string,method:string,args:number[])=>{
   if(method==='get_snapshot'){snaps++;return {count:m.count,revision:m.changed&&snaps%2===0?2:1};}
@@ -31,3 +31,5 @@ it('refreshes an operation target without scanning global collections',async()=>
 it('does not interpret provider failure as authoritative removal',async()=>{
  m.read.mockRejectedValue(new Error('offline'));await expect(syncIndex()).rejects.toThrow('offline');expect(m.sql.mock.calls.some(([s])=>s.join('').startsWith('DELETE'))).toBe(false);
 });
+
+it('rejects a stale page writer after its lease was replaced',async()=>{m.count=50;m.sql.mockImplementation(async(s:TemplateStringsArray)=>{const q=s.join('');if(q.includes('RETURNING *'))return [{cursor:0,revision:null,generation:null}];if(q.includes('RETURNING deployment'))return [{deployment:'registry'}];return [];});await expect(syncIndex()).rejects.toThrow('Index lease lost before page commit');expect(m.sql.mock.calls.some(([s])=>s.join('').startsWith('DELETE'))).toBe(false);});
