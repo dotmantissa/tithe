@@ -38,7 +38,7 @@ def test_initial_hearing_failure_has_bounded_equal_refunds(direct_deploy,direct_
 def test_failed_review_preserves_ruling_and_returns_only_review_bond(direct_deploy,direct_vm,direct_alice,direct_bob,external_views):
     work,_=external_views;c,key=prepared(direct_deploy,direct_vm,direct_alice,direct_bob,work)
     respond(c,key,direct_vm);verdict(direct_vm);original=c.rule(key)
-    fund(c,direct_vm,200);c.appeal_claim(key)
+    fund(c,direct_vm,200);c.appeal_claim(key,len(c.get_claim(key)['appeals'])+1,str(100*2**(len(c.get_claim(key)['appeals'])+1)))
     assert c.get_claim(key)['status']=='REVIEW_PENDING'
     direct_vm.clear_mocks();direct_vm.mock_web(r'.*',{'status':404,'body':b''})
     with direct_vm.expect_revert('Artifact unavailable'):c.rule(key)
@@ -96,7 +96,7 @@ def test_policy_is_claim_bound_and_immutable_through_review(direct_deploy,direct
     fund(c,direct_vm,100)
     c.respond(key,url,'',1767268800,1,fingerprint)
     verdict(direct_vm);first=c.rule(key)
-    fund(c,direct_vm,200);c.appeal_claim(key)
+    fund(c,direct_vm,200);c.appeal_claim(key,len(c.get_claim(key)['appeals'])+1,str(100*2**(len(c.get_claim(key)['appeals'])+1)))
     direct_vm.clear_mocks()
     direct_vm.mock_web(r'https://example.org/.*',{'status':200,'body':SOURCE})
     direct_vm.mock_web(r'https://policy.example.org/.*',{'status':404,'body':b''})
@@ -139,9 +139,9 @@ def test_all_three_bonded_rounds_conserve_funds_and_enforce_limit(direct_deploy,
     work,_=external_views;c,key=prepared(direct_deploy,direct_vm,direct_alice,direct_bob,work)
     respond(c,key,direct_vm);verdict(direct_vm);c.rule(key)
     for bond in [200,400,800]:
-        fund(c,direct_vm,bond);c.appeal_claim(key);c.rule(key)
+        fund(c,direct_vm,bond);c.appeal_claim(key,len(c.get_claim(key)['appeals'])+1,str(100*2**(len(c.get_claim(key)['appeals'])+1)));c.rule(key)
     direct_vm.value=1600
-    with direct_vm.expect_revert('Maximum appeal'):c.appeal_claim(key)
+    with direct_vm.expect_revert('Maximum appeal'):c.appeal_claim(key,len(c.get_claim(key)['appeals'])+1,str(100*2**(len(c.get_claim(key)['appeals'])+1)))
     assert c.get_account('0x'+direct_bob.hex())['escrow_atto']=='1600'
     direct_vm.warp('2026-01-04T12:00:00Z');c.settle(key)
     assert c.get_account('0x'+direct_alice.hex())['credit_atto']=='1600'

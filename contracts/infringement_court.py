@@ -338,14 +338,16 @@ class InfringementCourt(gl.Contract):
         return ruling
 
     @gl.public.write
-    def appeal_claim(self, claim_id: str) -> None:
+    def appeal_claim(self, claim_id: str, expected_round: int = 0, expected_bond_atto: str = "") -> None:
         claim = self.get_claim(claim_id)
         require(claim["status"] == "RULED" and now() < claim["settle_after"], "Appeal window closed")
         sender = gl.message.sender_address.as_hex
         require(sender in (claim["claimant"], claim["respondent"]), "Only a party may appeal")
         appeals = claim["appeals"]
         require(len(appeals) < 3, "Maximum appeal rounds reached")
-        bond = int(self.bond_atto) * 2 ** (len(appeals) + 1)
+        round = len(appeals) + 1
+        bond = int(self.bond_atto) * 2 ** round
+        require(expected_round == round and expected_bond_atto == str(bond), "Review round or bond changed; confirm the exact current amount")
         require(gl.message.value == 0 and int(self.credits[gl.message.sender_address] if gl.message.sender_address in self.credits else 0) >= bond, "Fund the exact escalating appeal bond before review")
         self.credits[gl.message.sender_address] = u256(int(self.credits[gl.message.sender_address]) - bond)
         appeals.append({"appealer": sender, "bond_atto": str(bond), "previous_ruling": claim["ruling"], "posted_at": now()})

@@ -119,7 +119,7 @@ def test_bonded_appeal_preserves_history_and_conserves_funds(direct_deploy,direc
     c.rule(key)
     direct_vm.sender=direct_bob if appealer=='respondent' else direct_alice
     fund(c,direct_vm,200)
-    c.appeal_claim(key)
+    c.appeal_claim(key,len(c.get_claim(key)['appeals'])+1,str(100*2**(len(c.get_claim(key)['appeals'])+1)))
     assert c.get_claim(key)['status']=='REVIEW_PENDING'
     assert c.get_claim(key)['appeals'][0]['previous_ruling']['decision']=='USE'
     assert c.get_account(('0x'+direct_bob.hex()))['escrow_atto']=='400'
@@ -149,15 +149,15 @@ def test_appeal_access_fee_and_deadline(direct_deploy,direct_vm,direct_alice,dir
     direct_vm.sender=direct_charlie
     direct_vm.value=200
     with direct_vm.expect_revert('Only a party'):
-        c.appeal_claim(key)
+        c.appeal_claim(key,len(c.get_claim(key)['appeals'])+1,str(100*2**(len(c.get_claim(key)['appeals'])+1)))
     direct_vm.sender=direct_bob
     direct_vm.value=100
     with direct_vm.expect_revert('escalating appeal bond'):
-        c.appeal_claim(key)
+        c.appeal_claim(key,len(c.get_claim(key)['appeals'])+1,str(100*2**(len(c.get_claim(key)['appeals'])+1)))
     direct_vm.warp('2026-01-04T12:00:00Z')
     direct_vm.value=200
     with direct_vm.expect_revert('Appeal window closed'):
-        c.appeal_claim(key)
+        c.appeal_claim(key,len(c.get_claim(key)['appeals'])+1,str(100*2**(len(c.get_claim(key)['appeals'])+1)))
 
 @pytest.mark.parametrize('left,right,agrees',[(0,1000,True),(0,1001,False),(200000,210526,True),(200000,210527,False)])
 def test_distance_tolerance_boundaries(direct_deploy,direct_vm,direct_alice,left,right,agrees):

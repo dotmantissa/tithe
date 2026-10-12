@@ -102,7 +102,20 @@ def test_expired_appeal_does_not_consume_prepaid_credit(direct_deploy,direct_vm,
     direct_vm.sender=direct_bob;fund(c,direct_vm,100);c.respond(key,accepted_used_at=1767268800,accepted_terms_version=1)
     direct_vm.mock_llm(r'.*',json.dumps({'decision':'USE','clause':'C2','damages_band':'HIGH'}));c.rule(key)
     fund(c,direct_vm,200);direct_vm.warp('2026-01-04T12:00:00Z')
-    with direct_vm.expect_revert('Appeal window closed'):c.appeal_claim(key)
+    with direct_vm.expect_revert('Appeal window closed'):c.appeal_claim(key,len(c.get_claim(key)['appeals'])+1,str(100*2**(len(c.get_claim(key)['appeals'])+1)))
     assert c.get_account('0x'+direct_bob.hex())['credit_atto']=='200'
     assert c.get_account('0x'+direct_bob.hex())['escrow_atto']=='200'
     assert len(c.get_claim(key)['appeals'])==0
+
+
+def test_stale_review_quote_cannot_spend_a_larger_existing_credit(direct_deploy,direct_vm,direct_alice,direct_bob,external_views):
+    work,_=external_views;c=court(direct_deploy,direct_vm,direct_alice);key=claim(c,work,direct_bob)
+    direct_vm.sender=direct_bob;fund(c,direct_vm,100);c.respond(key,accepted_used_at=1767268800,accepted_terms_version=1)
+    direct_vm.mock_llm(r'.*',json.dumps({'decision':'USE','clause':'C2','damages_band':'HIGH'}));c.rule(key)
+    fund(c,direct_vm,1000);c.appeal_claim(key,1,'200');c.rule(key)
+    before=c.get_account('0x'+direct_bob.hex())['credit_atto']
+    with direct_vm.expect_revert('Review round or bond changed'):c.appeal_claim(key,1,'200')
+    assert c.get_account('0x'+direct_bob.hex())['credit_atto']==before=='800'
+    assert len(c.get_claim(key)['appeals'])==1
+    c.appeal_claim(key,2,'400')
+    assert c.get_account('0x'+direct_bob.hex())['credit_atto']=='400'

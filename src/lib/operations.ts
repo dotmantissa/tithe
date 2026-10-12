@@ -69,7 +69,7 @@ export async function submit(subject: string, action: Action, idempotency: strin
     case 'appeal': {
       const claim=await read<Claim>('court','get_claim',[action.claim_id]);
       if(claim.status!=='RULED') throw new AppError('This claim is not awaiting an appeal.');
-      target=action.claim_id;contract='court';method='appeal_claim';args=[action.claim_id];
+      target=action.claim_id;contract='court';method='appeal_claim';args=[action.claim_id,action.expected_round,action.expected_bond_atto];
       const round=(claim.appeals?.length||0)+1,bond=BigInt(claim.bond_atto)*2n**BigInt(round);
       if(action.expected_round!==round||action.expected_bond_atto!==bond.toString())throw new AppError('The review round or bond changed. Read the record before approving another review.',409);
       value=BigInt(action.expected_bond_atto);break;
