@@ -58,7 +58,8 @@ def test_rejects_failed_fetch(direct_vm,direct_deploy):
 
 def test_still_image_registration(direct_vm,direct_deploy):
     import hashlib
-    raw=b'\x89PNG\r\n\x1a\nimage-data'
+    import base64
+    raw=base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAADklEQVR4nGP4DwYMEAoAU7oL9ZisIGcAAAAASUVORK5CYII=')
     direct_vm.mock_web(r'.*',{'status':200,'body':raw})
     contract=direct_deploy('contracts/work_registry.py')
     key=contract.register_work(URL,hashlib.sha256(raw).hexdigest(),TERMS,PRICES,'commercial')

@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 import hashlib
 import json
 import re
+from urllib.parse import urlsplit
+from PIL import Image
 
 
 def now() -> int:
@@ -18,9 +20,14 @@ def require(ok: bool, message: str) -> None:
 
 
 def public_url(url: str) -> None:
-    require(url.startswith("https://") and len(url) <= 2048, "A public HTTPS URL is required")
-    host = url[8:].split("/")[0].split(":")[0].lower()
-    require(bool(host) and "." in host and "@" not in url and not host.startswith(("127.", "10.", "192.168.", "169.254.", "172.", "0.")) and host not in ("localhost", "metadata.google.internal") and "[" not in host, "Private network URLs are not allowed")
+    require(url.startswith("https://") and len(url) <= 2048 and not any(c.isspace() for c in url) and "\\" not in url, "A public HTTPS URL is required")
+    try:
+        parsed = urlsplit(url)
+        host = parsed.hostname or ""
+        valid = parsed.scheme == "https" and parsed.port in (None, 443) and not parsed.username and not parsed.password and not parsed.fragment
+    except ValueError:
+        valid, host = False, ""
+    require(valid and bool(re.fullmatch(r"(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}", host)) and not host.endswith((".local", ".localhost", ".internal", ".home", ".lan", ".invalid", ".test")), "Private or malformed network URLs are not allowed")
 
 
 def is_animated(raw: bytes) -> bool:
@@ -35,6 +42,28 @@ def is_animated(raw: bytes) -> bool:
     return False
 
 
+class ImageBytes:
+    def __init__(self, raw: bytes):
+        self.raw = raw
+        self.offset = 0
+
+    def read(self, size: int = -1) -> bytes:
+        end = len(self.raw) if size < 0 else min(len(self.raw), self.offset + size)
+        value = self.raw[self.offset:end]
+        self.offset = end
+        return value
+
+    def seek(self, offset: int, whence: int = 0) -> int:
+        self.offset = offset + (self.offset if whence == 1 else len(self.raw) if whence == 2 else 0)
+        return self.offset
+
+    def tell(self) -> int:
+        return self.offset
+
+    def close(self) -> None:
+        pass
+
+
 def fetch_artifact(url: str, content_hash: str) -> dict:
     public_url(url)
     response = gl.nondet.web.get(url)
@@ -47,6 +76,18 @@ def fetch_artifact(url: str, content_hash: str) -> dict:
     if is_image:
         require(not raw.startswith(b"RIFF") or raw[8:12] == b"WEBP", "Only PNG, JPEG and WebP still images are supported")
         require(not (raw.startswith(b"\x89PNG") or raw.startswith(b"RIFF")) or not is_animated(raw), "Animated images are not supported")
+        try:
+            image = Image.open(ImageBytes(raw))
+            require(image.format in ("PNG", "JPEG", "WEBP"), "Only PNG, JPEG and WebP are supported")
+            require(getattr(image, "n_frames", 1) == 1, "Animated images are not supported")
+            require(0 < image.width <= 4096 and 0 < image.height <= 4096 and image.width * image.height <= 16_000_000, "Image dimensions exceed the limit")
+            image.verify()
+            decoded = Image.open(ImageBytes(raw))
+            decoded.load()
+        except gl.vm.UserError:
+            raise
+        except Exception:
+            raise gl.vm.UserError("[EXPECTED] Invalid or unsupported still image")
         return {"kind": "image", "body": raw, "text": ""}
     try:
         text = raw.decode("utf-8")

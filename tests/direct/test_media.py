@@ -47,7 +47,7 @@ def test_court_refuses_animated_output(direct_deploy,direct_vm,direct_alice,dire
 
 def image_evidence(direct_vm,work):
     import base64
-    raw=base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aSj8AAAAASUVORK5CYII=')
+    raw=base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAADklEQVR4nGP4DwYMEAoAU7oL9ZisIGcAAAAASUVORK5CYII=')
     work['content_hash']=hashlib.sha256(raw).hexdigest()
     work['kind']='image'
     direct_vm.clear_mocks()
@@ -71,8 +71,7 @@ def test_desk_passes_still_image_to_the_panel(direct_deploy,direct_vm,direct_bob
     assert seen==[[raw],[raw]]
 
 
-@pytest.mark.parametrize('valid',[True,False])
-def test_court_image_descriptions_are_validated(direct_deploy,direct_vm,direct_alice,direct_bob,external_views,monkeypatch,valid):
+def test_court_image_signature_is_reproducible(direct_deploy,direct_vm,direct_alice,direct_bob,external_views,monkeypatch):
     work,_=external_views
     raw=image_evidence(direct_vm,work)
     c=court(direct_deploy,direct_vm,direct_alice)
@@ -83,16 +82,27 @@ def test_court_image_descriptions_are_validated(direct_deploy,direct_vm,direct_a
     seen=[]
     def assess(prompt,*,images,response_format):
         seen.append(images)
-        if prompt.startswith('Describe each image'):
-            return {'source':'A white single pixel image.','output':'A white single pixel image.'} if valid else {'source':7}
-        return {'decision':'DERIVATIVE_WITHIN_TERMS','clause':'C1','damages_band':'NONE','reason':'The registered terms permit this image use with attribution.'}
+        assert 'spatial color signature' in prompt
+        return {'decision':'DERIVATIVE_WITHIN_TERMS','clause':'C1','damages_band':'NONE'}
     monkeypatch.setattr(gl.nondet,'exec_prompt',assess)
-    if valid:
-        ruling=c.rule(key)
-        assert ruling['distance_ppm']==0
-        assert direct_vm.run_validator()
-        assert all(images==[raw,raw] for images in seen)
-    else:
-        with direct_vm.expect_revert('Image descriptions missing'):
-            c.rule(key)
-        assert c.get_claim(key)['status']=='READY'
+    ruling=c.rule(key)
+    assert ruling['distance_ppm']==0
+    assert direct_vm.run_validator()
+    assert all(images==[raw,raw] for images in seen)
+
+@pytest.mark.parametrize('contract',['work_registry','licence_desk','infringement_court'])
+@pytest.mark.parametrize('url',['https://100.64.0.1/a','https://198.18.0.1/a','https://example.org:8443/a','https://example.org/a#fragment','https://user@example.org/a','https://private.local/a','https://example.org\\@private.local/a'])
+def test_contract_url_guards_match_public_artifact_policy(direct_deploy,contract,url):
+    import sys
+    args=[] if contract=='work_registry' else ['0x'+'1'*40] if contract=='licence_desk' else ['0x'+'1'*40,'0x'+'2'*40,100]
+    c=direct_deploy('contracts/'+contract+'.py',*args)
+    from genlayer import gl
+    with pytest.raises(gl.vm.UserError):sys.modules[c.__module__].public_url(url)
+
+@pytest.mark.parametrize('raw',[b'\x89PNG\r\n\x1a\nnot-an-image',b'\xff\xd8\xffnot-an-image',b'RIFF\x00\x00\x00\x00WEBPnot-an-image'])
+def test_registry_rejects_corrupt_still_images(direct_deploy,direct_vm,raw):
+    c=direct_deploy('contracts/work_registry.py')
+    direct_vm.mock_web(r'.*',{'status':200,'body':raw})
+    with direct_vm.expect_revert('Invalid or unsupported still image'):
+        c.register_work(URL,hashlib.sha256(raw).hexdigest(),TERMS,PRICES,'commercial')
+    assert c.get_count()==0
