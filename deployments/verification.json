@@ -1,29 +1,41 @@
 {
   "network": "GenLayer Studio",
-  "checked_at": "2026-10-11T20:36:14.193Z",
+  "checked_at": "2026-10-12T07:08:21.156Z",
   "checks": {
     "registry": {
-      "address": "0x5D3B1286e396D24045Fe52C2B7E6031977199D11",
-      "transaction": "0x0099d2c2a6981efd9f362436af4c2afa253abbcd48de104b928bece5423e7c2e",
-      "source_sha256": "d6240a8afef50203d4276ec60fb9476ca1fdfcd345045c95dd3e220a0521be5b",
+      "snapshot": {
+        "count": 0,
+        "revision": 0
+      },
+      "address": "0xB6beC431523A5D1A937b7925079096e3eD2bAFF1",
+      "transaction": "0x787c084b518ca4eb0d9c7979437925d417d736b1e4b2df61dc7d026400147d18",
+      "source_sha256": "c971f732483bd55fe9c73a4becce551ddb048f4621351233ae6c6ae2714ebf42",
       "source_matches": true,
       "schema_verified": true,
       "execution": "succeeded",
       "records": 0
     },
     "desk": {
-      "address": "0xAc75A90E0F349Bb518C965Ea8d9414D9CAfa5D86",
-      "transaction": "0xbf0776b880ab53c77034ef9830f2ff1c2820f33fb349aa08d437786feec9ac66",
-      "source_sha256": "3d20dc2d32ef3c6d666f4adde3841e0cdaa9a4583b2f96353ebea1005146bf79",
+      "snapshot": {
+        "count": 0,
+        "revision": 0
+      },
+      "address": "0xA9A463c806a1fffc2a55b68DdD61235Ba478C79F",
+      "transaction": "0x90c4cd5b1031cdaf770137e49e6d6b1cec27ff329648033c3a74e7dc0861a533",
+      "source_sha256": "9b8aec94a5998609abe71a180ce07ac12d06470019dd998a4dc34461441180c7",
       "source_matches": true,
       "schema_verified": true,
       "execution": "succeeded",
       "records": 0
     },
     "court": {
-      "address": "0x75c315a4E961714505dC5195F18c5a43d158726C",
-      "transaction": "0x334b184f934b30fc3030d443d38820509fce8ebdd75ee95d245aeea34e5186c3",
-      "source_sha256": "bd9ca859356cfe206279a85e76c6f8d612899e130cbed36da9521748333c41c7",
+      "snapshot": {
+        "count": 0,
+        "revision": 0
+      },
+      "address": "0x9Fd23b2Df77A334E08442F5d233121415fD6CAf3",
+      "transaction": "0xf820dd70506cc4eb15118440052441b86e81bec17fa38509fd388ebc1c2202ec",
+      "source_sha256": "239c810dcab6a0aac63d06abd017426a2bdd260c95dc777bc315b20fc9bdd8d2",
       "source_matches": true,
       "schema_verified": true,
       "execution": "succeeded",

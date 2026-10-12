@@ -2,14 +2,14 @@
   "network": "studionet",
   "chainId": 61999,
   "contracts": {
-    "registry": "0x5D3B1286e396D24045Fe52C2B7E6031977199D11",
-    "desk": "0xAc75A90E0F349Bb518C965Ea8d9414D9CAfa5D86",
-    "court": "0x75c315a4E961714505dC5195F18c5a43d158726C"
+    "registry": "0xB6beC431523A5D1A937b7925079096e3eD2bAFF1",
+    "desk": "0xA9A463c806a1fffc2a55b68DdD61235Ba478C79F",
+    "court": "0x9Fd23b2Df77A334E08442F5d233121415fD6CAf3"
   },
   "transactions": {
-    "registry": "0x0099d2c2a6981efd9f362436af4c2afa253abbcd48de104b928bece5423e7c2e",
-    "desk": "0xbf0776b880ab53c77034ef9830f2ff1c2820f33fb349aa08d437786feec9ac66",
-    "court": "0x334b184f934b30fc3030d443d38820509fce8ebdd75ee95d245aeea34e5186c3"
+    "registry": "0x787c084b518ca4eb0d9c7979437925d417d736b1e4b2df61dc7d026400147d18",
+    "desk": "0x90c4cd5b1031cdaf770137e49e6d6b1cec27ff329648033c3a74e7dc0861a533",
+    "court": "0xf820dd70506cc4eb15118440052441b86e81bec17fa38509fd388ebc1c2202ec"
   },
   "previous_deployments": [
     {
@@ -46,6 +46,45 @@
         "court": "0x61920381cd4daa002bae4a0fcd0b89da907d9ca00112d904d860988217fc0feb"
       },
       "reason": "Contract level animated image rejection; no app data registered"
+    },
+    {
+      "contracts": {
+        "registry": "0x5D3B1286e396D24045Fe52C2B7E6031977199D11",
+        "desk": "0xAc75A90E0F349Bb518C965Ea8d9414D9CAfa5D86",
+        "court": "0x75c315a4E961714505dC5195F18c5a43d158726C"
+      },
+      "transactions": {
+        "registry": "0x0099d2c2a6981efd9f362436af4c2afa253abbcd48de104b928bece5423e7c2e",
+        "desk": "0xbf0776b880ab53c77034ef9830f2ff1c2820f33fb349aa08d437786feec9ac66",
+        "court": "0x334b184f934b30fc3030d443d38820509fce8ebdd75ee95d245aeea34e5186c3"
+      },
+      "source_sha256": null,
+      "checked_at": "2026-10-12T06:48:24.724Z",
+      "reason": "Consensus, consent, evidence and recovery audit remediation. Existing application records and native balances verified empty before replacement."
+    },
+    {
+      "contracts": {
+        "registry": "0xB6beC431523A5D1A937b7925079096e3eD2bAFF1",
+        "desk": "0x15C59756ca6651D48Cc0F346702650Ce6ad4C0FA",
+        "court": "0xCB6E028bAA788a91666d22e28Dd302fD554caad5"
+      },
+      "transactions": {
+        "registry": "0x787c084b518ca4eb0d9c7979437925d417d736b1e4b2df61dc7d026400147d18",
+        "desk": "0x8bb54fba88795734aacf3b85e3bfaf498e4d24dcc4e883301126b5f58fe8ccfd",
+        "court": "0x1407d42f570094b870c32835d88d9e2bb75fa6886b015574767335fb329e99b8"
+      },
+      "source_sha256": {
+        "registry": "c971f732483bd55fe9c73a4becce551ddb048f4621351233ae6c6ae2714ebf42",
+        "desk": "616cbdf0f8955200c25ea6bfaef62bf1a7690786b0724c7843118035a0a6949b",
+        "court": "7cf9583d25345318bb62e86a6769ee094d9c9f117644b952600ae8bdc0cfb15a"
+      },
+      "checked_at": "2026-10-12T07:05:00.276Z",
+      "reason": "Consensus, consent, evidence and recovery audit remediation. Existing application records and native balances verified empty before replacement."
     }
-  ]
+  ],
+  "source_sha256": {
+    "registry": "c971f732483bd55fe9c73a4becce551ddb048f4621351233ae6c6ae2714ebf42",
+    "desk": "9b8aec94a5998609abe71a180ce07ac12d06470019dd998a4dc34461441180c7",
+    "court": "239c810dcab6a0aac63d06abd017426a2bdd260c95dc777bc315b20fc9bdd8d2"
+  }
 }
