@@ -102,6 +102,18 @@ def test_contract_url_guards_match_public_artifact_policy(direct_deploy,contract
 def test_registry_rejects_corrupt_still_images(direct_deploy,direct_vm,raw):
     c=direct_deploy('contracts/work_registry.py')
     direct_vm.mock_web(r'.*',{'status':200,'body':raw})
-    with direct_vm.expect_revert('Invalid or unsupported still image'):
+    expected='Invalid or unsupported still image' if raw.startswith(b'\x89PNG') else 'Convert this image to PNG'
+    with direct_vm.expect_revert(expected):
         c.register_work(URL,hashlib.sha256(raw).hexdigest(),TERMS,PRICES,'commercial')
     assert c.get_count()==0
+
+
+def test_valid_webp_is_rejected_before_native_decode(direct_deploy,direct_vm):
+    import io
+    from PIL import Image
+    body=io.BytesIO();Image.new('RGB',(4,4),'pink').save(body,format='WEBP');raw=body.getvalue()
+    direct_vm.mock_web(r'.*',{'status':200,'body':raw})
+    registry=direct_deploy('contracts/work_registry.py')
+    with direct_vm.expect_revert('Convert this image to PNG'):
+        registry.register_work(URL,hashlib.sha256(raw).hexdigest(),TERMS,PRICES,'commercial')
+    assert registry.get_count()==0

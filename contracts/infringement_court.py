@@ -74,11 +74,12 @@ def fetch_artifact(url: str, content_hash: str) -> dict:
     require(hashlib.sha256(raw).hexdigest() == content_hash, "Content hash changed")
     is_image = raw.startswith((b"\x89PNG\r\n\x1a\n", b"\xff\xd8\xff", b"RIFF"))
     if is_image:
-        require(not raw.startswith(b"RIFF") or raw[8:12] == b"WEBP", "Only PNG and WebP still images are supported")
+        require(not raw.startswith(b"RIFF") or raw[8:12] == b"WEBP", "Only PNG still images are supported")
         require(not (raw.startswith(b"\x89PNG") or raw.startswith(b"RIFF")) or not is_animated(raw), "Animated images are not supported")
+        require(raw.startswith(b"\x89PNG\r\n\x1a\n"), "Convert this image to PNG before registering or using it")
         try:
             image = Image.open(ImageBytes(raw))
-            require(image.format in ("PNG", "WEBP"), "Only PNG and WebP are supported")
+            require(image.format in ("PNG",), "Only PNG are supported")
             require(getattr(image, "n_frames", 1) == 1, "Animated images are not supported")
             require(0 < image.width <= 4096 and 0 < image.height <= 4096 and image.width * image.height <= 16_000_000, "Image dimensions exceed the limit")
             image.verify()
@@ -92,7 +93,7 @@ def fetch_artifact(url: str, content_hash: str) -> dict:
     try:
         text = raw.decode("utf-8")
     except UnicodeDecodeError:
-        raise gl.vm.UserError("[EXPECTED] Only UTF8 text and PNG and WebP images are supported")
+        raise gl.vm.UserError("[EXPECTED] Only UTF8 text and PNG images are supported")
     require("\x00" not in text and len(text) <= 24000, "Text must be at most 24000 characters")
     return {"kind": "text", "body": raw, "text": text}
 

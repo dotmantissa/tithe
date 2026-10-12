@@ -1,7 +1,7 @@
 import {it,expect} from 'vitest';
 import sharp from 'sharp';
 import {validateArtifactBytes,artifactURL} from '../../src/lib/artifacts';
-it.each(['png','webp'] as const)('fully decodes a valid %s before fingerprinting',async(format)=>{
+it.each(['png'] as const)('fully decodes a valid %s before fingerprinting',async(format)=>{
  const raw=await sharp({create:{width:4,height:4,channels:3,background:'#ff90e8'}}).toFormat(format).toBuffer();
  expect(await validateArtifactBytes(raw,'https://example.org/image')).toMatchObject({kind:'image',bytes:raw.length});
 });
@@ -13,3 +13,5 @@ it('rejects excessive image dimensions before pixel allocation',async()=>{
 it.each(['https://100.64.0.1/a','https://198.18.0.1/a','https://private.local/a','https://example.org\\@private.local/a'])('refuses nonpublic host syntax %s',url=>expect(()=>artifactURL(url)).toThrow());
 
 it('rejects even a valid JPEG because the pinned Studio runner lacks that decoder',async()=>{const raw=await sharp({create:{width:4,height:4,channels:3,background:'#ff90e8'}}).jpeg().toBuffer();await expect(validateArtifactBytes(raw,'https://example.org/image')).rejects.toThrow('convert');});
+
+it('rejects even a valid WebP before the native decoder can trap',async()=>{const raw=await sharp({create:{width:4,height:4,channels:3,background:'#ff90e8'}}).webp().toBuffer();await expect(validateArtifactBytes(raw,'https://example.org/image')).rejects.toThrow('convert');});

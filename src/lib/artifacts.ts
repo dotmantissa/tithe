@@ -68,22 +68,22 @@ export async function validateArtifactBytes(raw:Buffer,input:string) {
   const png = raw.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]));
   const jpeg = raw.subarray(0,3).equals(Buffer.from([255,216,255]));
   const webp = raw.subarray(0,4).toString()==='RIFF' && raw.subarray(8,12).toString()==='WEBP';
-  if(jpeg)throw new AppError('Please convert this JPEG to PNG or WebP. The Studio image decoder supports those formats.');
-  const kind = png || webp ? 'image' : 'text';
+  if(jpeg||webp)throw new AppError('Please convert this image to PNG. That format is verified on the Studio runner.');
+  const kind = png ? 'image' : 'text';
   if ((png || webp) && animatedImage(raw,png)) throw new AppError('Choose a still image. Animated images are not supported.');
   if(kind==='image'){
     try{
       const decoder=sharp(raw,{limitInputPixels:16000000,failOn:'warning',animated:true});
       const metadata=await decoder.metadata();
-      if(!['png','webp'].includes(metadata.format||''))throw new AppError('Choose PNG or WebP.');
+      if(!['png'].includes(metadata.format||''))throw new AppError('Choose PNG.');
       if((metadata.pages||1)!==1)throw new AppError('Choose a still image. Animated images are not supported.');
       if(!metadata.width||!metadata.height||metadata.width>4096||metadata.height>4096||metadata.width*metadata.height>16000000)throw new AppError('Keep image dimensions below 4097 pixels and 16 million pixels in total.');
       await decoder.raw().toBuffer();
-    }catch(error){if(error instanceof AppError)throw error;throw new AppError('That image cannot be decoded. Choose a complete PNG or WebP.');}
+    }catch(error){if(error instanceof AppError)throw error;throw new AppError('That image cannot be decoded. Choose a complete PNG.');}
   }
   if (kind === 'text') {
     let text: string;
-    try { text = new TextDecoder('utf-8', { fatal: true }).decode(raw); } catch { throw new AppError('Choose UTF8 text, PNG or WebP.'); }
+    try { text = new TextDecoder('utf-8', { fatal: true }).decode(raw); } catch { throw new AppError('Choose UTF8 text, PNG.'); }
     if (text.includes('\0') || [...text].length > 24000) throw new AppError('Text must contain at most 24000 characters.');
   }
   return { content_hash: createHash('sha256').update(raw).digest('hex'), kind, bytes: raw.length, url: input };
