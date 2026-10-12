@@ -19,7 +19,7 @@ export function artifactURL(input: string) {
   }
   return url;
 }
-export async function inspectArtifact(input: string) {
+export async function preserveArtifact(input: string) {
   const url = artifactURL(input);
   const addresses = await lookup(url.hostname, { all: true }).catch(() => { throw new AppError('We could not find that website.'); });
   if (!addresses.length || addresses.some(a => !isPublicAddress(a.address))) throw new AppError('Private network addresses are not accepted.');
@@ -60,7 +60,12 @@ export async function inspectArtifact(input: string) {
     }
   }
   if (!raw?.length) throw new AppError('That artifact is empty.');
-  return validateArtifactBytes(raw,input);
+  return {...await validateArtifactBytes(raw,input),artifact_base64:raw.toString("base64")};
+}
+
+export async function inspectArtifact(input:string) {
+  const saved=await preserveArtifact(input);
+  return {content_hash:saved.content_hash,kind:saved.kind,bytes:saved.bytes,url:saved.url};
 }
 
 export async function validateArtifactBytes(raw:Buffer,input:string) {

@@ -8,7 +8,7 @@ import { accountFor, addresses, chain, executionSucceeded, operationState, norma
 import { database } from './db';
 import { AppError } from './errors';
 import { digest, limit } from './security';
-import { inspectArtifact } from './artifacts';
+import { preserveArtifact } from './artifacts';
 import { reconcileTarget } from './indexer';
 import type { Action } from './schemas';
 import type { Work, Operation, Claim } from './types';
@@ -39,10 +39,10 @@ export async function submit(subject: string, action: Action, idempotency: strin
   let contract: ContractName='registry', method='', args: CalldataEncodable[]=[], value=0n;
   switch(action.kind) {
     case 'register': {
-      const artifact=await inspectArtifact(action.url);
+      const artifact=await preserveArtifact(action.url);
       if(artifact.content_hash!==action.content_hash) throw new AppError('The work changed after preview. Fetch it again before registering.');
       target=digest(accountFor(subject).address+':'+action.content_hash+':'+action.url);
-      method='register_work';args=[action.url,action.content_hash,action.terms_text,JSON.stringify(action.prices),action.licence_class,action.title];break;
+      method='register_work';args=[action.url,action.content_hash,action.terms_text,JSON.stringify(action.prices),action.licence_class,action.title,artifact.artifact_base64];break;
     }
     case 'terms': target=action.work_id;method='update_terms';args=[action.work_id,action.terms_text,JSON.stringify(action.prices),action.licence_class];break;
     case 'licence': {
@@ -54,14 +54,19 @@ export async function submit(subject: string, action: Action, idempotency: strin
       value=BigInt(action.expected_fee_atto);contract='desk';method='request_licence';args=[action.work_id,action.intended_use_text,action.use_class,action.expected_terms_version,action.expected_fee_atto,id];break;
     }
     case 'claim': {
-      const artifact=await inspectArtifact(action.output_url);
+      const artifact=await preserveArtifact(action.output_url);
       if(artifact.content_hash!==action.output_hash) throw new AppError('The output changed after preview. Fetch it again.');
-      target=digest(action.work_id+':request:'+id);contract='court';method='file_claim';args=[action.work_id,action.output_url,action.output_hash,action.respondent,action.used_at,action.terms_version,id];
+      target=digest(action.work_id+':request:'+id);contract='court';method='file_claim';args=[action.work_id,action.output_url,action.output_hash,action.respondent,action.used_at,action.terms_version,id,artifact.artifact_base64,JSON.stringify(action.usage_evidence)];
       if((await read<{bond_atto:string}>('court','get_account',[accountFor(subject).address])).bond_atto!==action.expected_bond_atto)throw new AppError('The bond changed. Read the record and agree to the current amount.',409);
       value=BigInt(action.expected_bond_atto);break;
     }
-    case 'respond':target=action.claim_id;contract='court';method='respond';args=[action.claim_id,action.policy_url,action.licence_id,action.accepted_used_at,action.accepted_terms_version,action.policy_hash];if((await read<{bond_atto:string}>('court','get_account',[accountFor(subject).address])).bond_atto!==action.expected_bond_atto)throw new AppError('The bond changed. Read the record and agree to the current amount.',409);
+    case 'respond': {
+      const policy=action.policy_url?await preserveArtifact(action.policy_url):null;
+      if(policy&&(policy.content_hash!==action.policy_hash||policy.kind!=='text'))throw new AppError('The policy changed after preview or is not text. Fetch it again.');
+      target=action.claim_id;contract='court';method='respond';args=[action.claim_id,action.policy_url,action.licence_id,action.accepted_used_at,action.accepted_terms_version,action.policy_hash,policy?.artifact_base64||'',JSON.stringify(action.usage_evidence)];if((await read<{bond_atto:string}>('court','get_account',[accountFor(subject).address])).bond_atto!==action.expected_bond_atto)throw new AppError('The bond changed. Read the record and agree to the current amount.',409);
       value=BigInt(action.expected_bond_atto);break;
+    }
+    case 'review_response':target=action.claim_id;contract='court';method='respond_review';args=[action.claim_id,action.expected_round,action.response];break;
     case 'propose_time':case 'accept_time':target=action.claim_id;contract='court';method=action.kind==='propose_time'?'propose_use_time':'accept_use_time';args=[action.claim_id,action.used_at,action.terms_version];break;
     case 'rule':case 'settle':case 'cancel':case 'recover':target=action.claim_id;contract='court';method=action.kind==='cancel'?'cancel_unanswered':action.kind==='recover'?'recover_hearing':action.kind;args=[action.claim_id];break;
     case 'release':target=action.licence_id;contract='desk';method='release_fee';args=[action.licence_id];break;
@@ -69,7 +74,7 @@ export async function submit(subject: string, action: Action, idempotency: strin
     case 'appeal': {
       const claim=await read<Claim>('court','get_claim',[action.claim_id]);
       if(claim.status!=='RULED') throw new AppError('This claim is not awaiting an appeal.');
-      target=action.claim_id;contract='court';method='appeal_claim';args=[action.claim_id,action.expected_round,action.expected_bond_atto];
+      target=action.claim_id;contract='court';method='appeal_claim';args=[action.claim_id,action.expected_round,action.expected_bond_atto,action.grounds,action.additional_evidence];
       const round=(claim.appeals?.length||0)+1,bond=BigInt(claim.bond_atto)*2n**BigInt(round);
       if(action.expected_round!==round||action.expected_bond_atto!==bond.toString())throw new AppError('The review round or bond changed. Read the record before approving another review.',409);
       value=BigInt(action.expected_bond_atto);break;
@@ -166,8 +171,9 @@ export async function refreshOperation(subject: string, id: string) {
   const error=state==='FAILED'?'The network did not apply this action. Any funded amount remains withdrawable credit.':null;
   const result=success&&decided?{record_id:op.target_id,contract:op.contract_name,method:op.function_name}:null;
   const changed=op.status!==state||!op.indexed;
+  // Acceptance is provisional: only finalized targets enter the public index.
   let indexed=op.indexed;
-  if(success&&decided&&changed){try{if(op.target_id)await reconcileTarget(op.contract_name,op.target_id);indexed=true;}catch{indexed=false;}}
+  if(success&&state==='FINALIZED'&&changed){try{if(op.target_id)await reconcileTarget(op.contract_name,op.target_id);indexed=true;}catch{indexed=false;}}
   if(['FAILED','CANCELED'].includes(state)&&op.target_id&&['licence','claim'].includes(op.kind)){await sql`DELETE FROM tithe_records WHERE id=${op.target_id} AND deployment=${op.contract_address}`;indexed=true;}
   await sql`UPDATE tithe_operations SET status=${state},error=${error},result=${result?JSON.stringify(result):null}::jsonb,indexed=${indexed},next_retry_at=now()+interval '20 seconds',updated_at=now(),lease_token=CASE WHEN ${decided||state==='FAILED'||state==='CANCELED'} THEN NULL ELSE lease_token END WHERE id=${id} AND subject=${subject}`;
   return publicOperation(normalize({...op,status:state,error,result:result||undefined,indexed}));

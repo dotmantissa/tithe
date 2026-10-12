@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Scale, BookOpen } from 'lucide-react';
 import { useResource, Loading, LoadError, date, short } from '@/components/ui';
 import type { Claim } from '@/lib/types';
-export const verdict=(decision?:string)=>decision==='USE'?'Use outside the terms':decision==='NO_USE'?'No use established':decision==='DERIVATIVE_WITHIN_TERMS'?'Use within the terms':'Awaiting a hearing';
+export const verdict=(decision?:string)=>decision==='USE'?'Use outside the terms':decision==='NO_USE'?'No use established':decision==='DERIVATIVE_WITHIN_TERMS'?'Use within the terms':decision==='INSUFFICIENT_EVIDENCE'?'Insufficient evidence':'Awaiting a hearing';
 export const claimStatus=(status:string)=>({AWAITING_RESPONSE:'Waiting for a response',READY:'Ready for a hearing',REVIEW_PENDING:'Review in progress',TIME_DISPUTED:'Time awaiting agreement',RULED:'Decision recorded',SETTLED:'Settled',CLOSED_WITHOUT_RULING:'Closed without a ruling'}[status]||status);
 export const claimHeadline=(claim:Claim)=>claim.status==='REVIEW_PENDING'?'Review in progress':claim.status==='CLOSED_WITHOUT_RULING'?'Closed without a ruling':verdict(claim.ruling?.decision);
 export default function DocketPage(){
