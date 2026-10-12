@@ -5,14 +5,14 @@ The October review found real defects behind the earlier green checks. This revi
 | Finding | Repair | Evidence |
 | :--- | :--- | :--- |
 | Leader fields could redirect licence escrow | Exact canonical consensus envelopes; explicit deterministic payment and identity metadata | Hostile field and escrow regression tests |
-| Unbound explanations influenced later decisions | Clause based explanations; prose excluded from later evidence; bound terms basis | Conflicting leader and prior grant validator tests |
+| Unbound explanations influenced later decisions | Independently verified factual explanations; prior reasoning remains untrusted during review; bound terms basis | Conflicting leader and prior grant validator tests |
 | Funded hearings could stall indefinitely | Initial and review deadlines, refunds, retained prior ruling and public recovery | Failed evidence, review expiry and three round conservation tests |
 | A changed price could exceed consent | Exact fee and terms version in the UI, API and contract | Stale quote, unknown field and contract consent tests |
 | Interrupted signing could block an account | Encrypted signing outbox, fenced leases, unsigned expiry, identical byte recovery | Real Neon lease race; signer, nonce, hash, ownership and crash tests |
 | Claimant time silently chose historical terms | Explicit version candidates, two party agreement and correction | Same timestamp and stale proposal acceptance tests |
 | New terms could invalidate an earlier grant | Original grant terms remain available; validators bind which terms apply | Original licence basis regression and live grant checks |
-| Policy evidence changed during review | Published claim/account marker, verified hash, locked body | Changed and unavailable policy review tests |
-| Provisional records survived removal | Revision snapshots, stable scan pruning and final target refresh | Changed snapshot, zero count pruning and finality tests |
+| Policy evidence changed during review | Account-signed claim marker, verified hash and preserved body; no website-ownership claim | Changed and unavailable policy review tests |
+| Provisional records survived removal | Finalized-only documents, append-only fixed-prefix scans and finalized target refresh | Changing snapshots, no deletion inference and finality tests |
 | Agents could not retrieve their permission | Result IDs, licence/account/history tools, proper MCP errors | Official MCP SDK submit, poll and licence read test |
 | Unbounded scans and record caps hid progress or money | Resumable bounded pages, fair backoff, global RPC budget, separate pagination and independent withdrawal controls | Large collection, deadline and target refresh tests |
 | Image magic and weak URL syntax passed validation | Complete decoding, frame and dimension limits, strict HTTPS syntax and public DNS controls | Corrupt image and address tests; real PNG Studio evidence |
