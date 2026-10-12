@@ -1,18 +1,18 @@
 # Verification record
 
-Audit repairs checked on 12 October 2026. The live reports contain the exact addresses, transactions and source hashes.
+Audit repairs checked on 12 October 2026. The previous live reports contain exact addresses, transactions and source hashes for the earlier release. They do not validate the current durable-evidence revision until regenerated. Current local checks pass; final-source court suite and public deployment verification remain in progress. An intermediate isolated court has finalized a real insufficient-evidence ruling with majority agreement; its source precedes the latest copying-criteria refinement.
 
 | Check | Result |
 | :--- | :--- |
-| Direct contract tests | 108 passed across registry, licence desk, court, funding and transfers |
-| Backend and component tests | 111 passed |
+| Direct contract tests | 129 passed across registry, licence desk, court, funding and transfers |
+| Backend and component tests | 145 passed |
 | ESLint and TypeScript | Passed |
 | GenVM lint | All three contracts passed |
 | Next.js production build | Passed |
 | Real Neon lease and recovery checks | Passed |
-| Isolated live Studio suite | Passed on the final sources: six real rulings, four settlements and every native balance |
+| Isolated live Studio suite | Earlier release passed. Current revision: paid approval/native release and failed-action refund verified; intermediate court insufficient ruling finalized; final-source suite pending |
 | Official MCP client integration | Passed |
-| Deployment source comparison | All three application sources match byte for byte |
+| Deployment source comparison | Earlier release verified; application replacement for current source pending |
 | Application configuration | Default fee escrow, bonds, response, hearing and appeal windows verified |
 | Credential scan | No local credentials in working source, Git history or public build assets |
 | Runtime dependency audit | Zero high or critical advisories; 27 moderate upstream advisories |
@@ -25,9 +25,9 @@ The focused appeal lifecycle test renders the actual claim component and product
 
 The official MCP client initializes, lists tools, submits an action, polls its result and retrieves the licence by its returned record ID. Separate tests cover unsupported protocol headers, protocol errors, tool execution errors and credential privacy. The same official client also passed against the running application with real Neon authentication, managed account reads, search and error handling. The live API suite uses a temporary hashed key in Neon, checks account authorization, safe artifact fetching, real content fingerprints, tool discovery, origin restrictions and revocation, then removes the key.
 
-[The Studio report](../deployments/studio-verification.json) records isolated real network tests. The suite uses public text and image artifacts, independent model assessments and actual ONNX embeddings. Isolated fee escrow is ten seconds, hearing and response windows are one hour, and appeals are twenty minutes. These declared test constructor values allow actual native fee release, review and settlement checks without changing the shared Studio clock. The application uses one day escrow, seven day responses, one day hearings and two day appeals. [Application deployment verification](../deployments/verification.json) checks those defaults, wiring, execution, source and snapshots.
+[The Studio report](../deployments/studio-verification.json) records isolated real network tests. The earlier suite used public text and image artifacts, independent model assessments and actual ONNX embeddings. The current revision adds preserved evidence, usage statements, factual explanations, review responses and live instruction-injection/context tests; these checks must produce a new source-bound report before the revision is marked verified. The earlier isolated suite used ten second fee escrow, one hour hearing/response windows and twenty minute appeals. The current suite declares four hour hearings and two hour appeals because actual consensus latency consumed the earlier test review window; response remains one hour. These declared test constructor values allow actual native fee release, review and settlement checks without changing the shared Studio clock. The application uses one day escrow, seven day responses, one day hearings and two day appeals. [Application deployment verification](../deployments/verification.json) checks those defaults, wiring, execution, source and snapshots.
 
-The live suite exercised, in one isolated deployment: a paid commercial approval with timed fee release and native withdrawal, an intentionally reverted action whose funded credit survived and was withdrawn in full, a terms update to a prohibition, a refused request with its refund, a nonidentical text dispute ruled through actual ONNX embeddings at a measured distance of 344116 parts per million, a bonded review of that ruling, a grandfathered grant that resolved on the original licence terms rather than the amended version, a PNG image dispute decided from real vision input, and an unlicensed copy of prohibited terms that drew a HIGH damages band. All four claims then settled and both parties withdrew their credits, leaving the court holding nothing.
+The earlier live suite exercised, in one isolated deployment: a paid commercial approval with timed fee release and native withdrawal, an intentionally reverted action whose funded credit survived and was withdrawn in full, a terms update to a prohibition, a refused request with its refund, a nonidentical text dispute ruled through actual ONNX embeddings at a measured distance of 344116 parts per million, a bonded review of that ruling, a grandfathered grant that resolved on the original licence terms rather than the amended version, a PNG image dispute decided from real vision input, and an unlicensed copy of prohibited terms that drew a HIGH damages band. All four claims then settled and both parties withdrew their credits, leaving the court holding nothing.
 
 A live failure reproduction found that Studio retained native value attached to a reverted transaction in an older isolated court. The corrected protocol funds withdrawable credit first and sends every licence, claim, response and appeal action with zero attached value. The live suite intentionally reverts an action after funding and verifies the unchanged credit and its full native withdrawal. Earlier isolated addresses and signed transaction records remain available for investigation. Application deployments were empty and held zero native balance before replacement.
 

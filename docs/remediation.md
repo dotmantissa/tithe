@@ -25,6 +25,25 @@ The interface resumes saved operation polling after a reload and continues after
 
 [The verification record](validation.md) separates local regression coverage, real network results and remaining environmental checks. Contract addresses and source hashes live in the deployment reports. Earlier addresses are preserved, and replacement requires verification that application records and native balances are empty.
 
-The isolated live run that confirms this revision used the final contract sources, with hashes recorded in [the Studio report](../deployments/studio-verification.json) that match the deployed application byte for byte. Its two harness repairs are worth stating plainly, because both hid real success behind an apparent failure: a funding transfer had no replay path, so a broadcast that left no record made a resumed run poll a hash forever; and Studio can leave a broadcast transaction invisible for minutes while the client reports a hard not-found, which previously failed a transaction that had in fact finalized. Resume now re-sends the exact saved bytes and waits within a bounded deadline, and never signs a replacement.
+The earlier isolated live run used its release contract sources, with hashes recorded in [the Studio report](../deployments/studio-verification.json) that matched the earlier deployed application byte for byte. That report does not validate the current durable-evidence revision until regenerated. Its two harness repairs are worth stating plainly, because both hid real success behind an apparent failure: a funding transfer had no replay path, so a broadcast that left no record made a resumed run poll a hash forever; and Studio can leave a broadcast transaction invisible for minutes while the client reports a hard not-found, which previously failed a transaction that had in fact finalized. Resume now re-sends the exact saved bytes and waits within a bounded deadline, and never signs a replacement.
 
 These changes establish the tested application behavior. They cannot promise acceptance by a reviewer or confer legal court authority. Human email OTP completion, a Docker build and the scheduler's first automatic invocation still require their respective environments.
+
+
+## Durable receipt and arbitration review
+
+| Finding | Repair | Verification |
+| --- | --- | --- |
+| Missing actual-use context | Both parties commit six structured usage fields and hashes; material fact criteria; current/original prices supplied; INSUFFICIENT_EVIDENCE returns bonds with zero damages | Direct factual/settlement tests; isolated live contradictory-context test |
+| Public nonfinal permission | Explicit latest-final reads, finality metadata, finalized-only index, variant-separated caches | Reader/API and accepted-operation index tests |
+| Evidence withdrawal obstructs adjudication | Hash-verified source/output/policy bytes preserved on chain; public snapshot downloads; no contract HTTP calls | Direct no-network initial/review tests; real preserved-byte reads |
+| Revision churn prevents rebuild | Append-only fixed high-water prefix and persistent fenced cursor; later passes refresh changes; five-minute authenticated job plus daily fallback | Exact 201-record reproduction now reads 0,50,100,150,200 while revisions/appends continue |
+| Anonymous traffic exhausts RPC | Trusted caller limits before chain access; aggregate public caps; explicit negative caching; recovery reservations | API/context/cache regressions and isolated real Neon reservation races |
+| Arbitrary equivalent clause selection | Lowest numbered applicable rule, first-occurrence normalization for matching historical duplicate text, rejection of new duplicate clauses | Direct citation and normalized duplicate tests |
+| Contract network restrictions weaker | Removed all HTTP access from contracts; direct callers supply bounded hash-verified bytes | No-network direct tests and real inline evidence |
+| Thin explanations/reviews | Factual statuses, concrete reason, evidence references, quoted clause, damages reason; independently checked narratives; committed grounds/additional evidence and opposing response window | Hostile narrative, review access/window and live reasoning checks |
+| Undisclosed 128-version ceiling | Metadata, remaining-update copy, exhausted editor, registration disclosure | Contract boundary and UI regressions |
+| Stale architecture | Rewritten for preserved bytes, deterministic image signatures, verified factual narratives, finality and append-only scans | Source/doc comparison |
+| Limited adversarial assurance | Hostile source, intended-use, policy and image instruction fixtures exercised with real validators, plus malformed-field and unsupported-reasoning regressions | Live report records actual tested outcomes; no universal model-security claim |
+
+Previous deployment/test reports are historical evidence until regenerated for this source revision. The canonical ignored TASKS.md records which validations and release steps are complete.
