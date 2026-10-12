@@ -189,7 +189,7 @@ class InfringementCourt(gl.Contract):
         self.appeal_seconds = u256(appeal_seconds)
 
     @gl.public.write.payable
-    def file_claim(self, work_id: str, output_url: str, output_hash: str, respondent: str, used_at: int, terms_version: int = 0) -> str:
+    def file_claim(self, work_id: str, output_url: str, output_hash: str, respondent: str, used_at: int, terms_version: int = 0, request_id: str = "") -> str:
         public_url(output_url)
         require(bool(re.fullmatch("[0-9a-f]{64}", output_hash)), "Use a lowercase SHA256 output hash")
         require(gl.message.value == self.bond_atto, "Deposit the exact claim bond")
@@ -201,7 +201,10 @@ class InfringementCourt(gl.Contract):
         def verify_output():
             return fetch_artifact(output_url, output_hash)["kind"]
         require(gl.eq_principle.strict_eq(verify_output) == work["kind"], "Source and output must be the same media type")
-        claim_id = hashlib.sha256((work_id + ":" + str(len(self.claim_ids))).encode()).hexdigest()
+        require(request_id == "" or bool(re.fullmatch("[a-zA-Z0-9:_-]{16,100}", request_id)), "Invalid request identifier")
+        identifier = ":request:" + request_id if request_id else ":ordinal:" + str(len(self.claim_ids))
+        claim_id = hashlib.sha256((work_id + identifier).encode()).hexdigest()
+        require(claim_id not in self.claims, "This request is already recorded")
         self.claims[claim_id] = json.dumps({"claim_id": claim_id, "work_id": work_id, "claimant": work["creator"], "respondent": Address(respondent).as_hex, "output_url": output_url, "output_hash": output_hash, "used_at": used_at, "terms_version": historic["version"], "status": "AWAITING_RESPONSE", "filed_at": now(), "response_deadline": now() + int(self.response_seconds), "bond_atto": str(self.bond_atto), "policy_url": "", "policy_hash": "", "policy_text": "", "licence_id": "", "time_agreed": False, "appeals": []}, sort_keys=True)
         self.claim_ids.append(claim_id)
         self.total_bonds = u256(self.total_bonds + self.bond_atto)

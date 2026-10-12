@@ -23,7 +23,7 @@ export interface Claim {
   appeals?: {appealer:string;bond_atto:string;previous_ruling:Ruling;posted_at:number;completed_at?:number;outcome?:'REVIEWED'|'EXPIRED';bond_returned?:boolean}[]; ruling?: Ruling; ruled_at?: number; settle_after?: number; damages_atto?: string;
 }
 export interface Operation {
-  id: string; tx_hash: string | null; kind: string; status: string; error?: string | null; created_at: string;
+  id: string; tx_hash: string | null; kind: string; status: string; error?: string | null; created_at: string; result?: {record_id:string|null;contract:string;method:string};
 }
 export interface Account {
   address: string; balance_atto: string; credit_atto: string; court_credit_atto: string;

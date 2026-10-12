@@ -59,3 +59,16 @@ def test_stale_or_missing_fee_consent_cannot_create_licence(direct_deploy,direct
         desk.request_licence(work['work_id'],'Commercial use with attribution.','commercial',version,fee)
     assert desk.get_count()==0
     assert desk.get_account('0x'+direct_bob.hex())['credit_atto']=='0'
+
+
+def test_explicit_operation_id_is_unique_and_returns_the_committed_licence(direct_deploy,direct_vm,direct_bob,external_views):
+    import hashlib
+    from genlayer import Address
+    work,_=external_views;desk=setup_desk(direct_deploy,direct_vm,direct_bob);answer(direct_vm)
+    request='operation-reference-1234'
+    key=desk.request_licence(work['work_id'],'Commercial use with attribution.','commercial',1,'100',request)
+    assert key==hashlib.sha256((Address(direct_bob).as_hex+':request:'+request).encode()).hexdigest()
+    with direct_vm.expect_revert('already recorded'):
+        desk.request_licence(work['work_id'],'Commercial use with attribution.','commercial',1,'100',request)
+    assert desk.get_count()==1
+    assert desk.get_account('0x'+direct_bob.hex())['escrow_atto']=='100'

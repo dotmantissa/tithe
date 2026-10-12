@@ -7,7 +7,7 @@ import { authenticate, checkOrigin, digest, limit, readJSON } from './security';
 import { AppError, failure } from './errors';
 import { inspectArtifact } from './artifacts';
 import { actionSchema } from './schemas';
-import { submit, refreshOperation } from './operations';
+import { submit, refreshOperation, resumeOperation } from './operations';
 import { syncIndex } from './indexer';
 import type { Licence, Claim, Work } from './types';
 
@@ -68,6 +68,7 @@ export async function handle(request: Request, segments: string[]) {
         await syncIndex();return json({synced:true});
       }
       const subject=await authenticate(request,path!=='keys');
+      if(segments[0]==='operations'&&segments[1]&&segments[2]==='resume'){await limit(subject+':resume',5);return json(await resumeOperation(subject,z.string().uuid().parse(segments[1])),202);}
       if(path==='artifacts') {
         await limit(subject+':artifacts',10);
         const body=z.object({url:z.string().max(2048)}).parse(await readJSON(request));

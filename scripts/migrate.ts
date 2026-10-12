@@ -26,4 +26,23 @@ await sql.query(`CREATE TABLE IF NOT EXISTS tithe_limits (
 await sql.query(`ALTER TABLE tithe_limits ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now()`);
 await sql.query(`ALTER TABLE tithe_operations ADD COLUMN IF NOT EXISTS indexed boolean NOT NULL DEFAULT false`);
 await sql.query(`CREATE UNIQUE INDEX IF NOT EXISTS tithe_one_submission ON tithe_operations(subject) WHERE status IN ('SUBMITTING','SIGNED')`);
+await sql.query(`ALTER TABLE tithe_operations
+  ADD COLUMN IF NOT EXISTS action_json jsonb,
+  ADD COLUMN IF NOT EXISTS contract_name text,
+  ADD COLUMN IF NOT EXISTS contract_address text,
+  ADD COLUMN IF NOT EXISTS function_name text,
+  ADD COLUMN IF NOT EXISTS target_id text,
+  ADD COLUMN IF NOT EXISTS result jsonb,
+  ADD COLUMN IF NOT EXISTS outbox_ciphertext text,
+  ADD COLUMN IF NOT EXISTS outbox_nonce text,
+  ADD COLUMN IF NOT EXISTS lease_token uuid,
+  ADD COLUMN IF NOT EXISTS lease_until timestamptz,
+  ADD COLUMN IF NOT EXISTS attempts integer NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS next_retry_at timestamptz NOT NULL DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now()`);
+await sql.query(`UPDATE tithe_operations SET lease_until=created_at + interval '2 minutes' WHERE lease_until IS NULL AND status IN ('SUBMITTING','SIGNED','SUBMISSION_UNCERTAIN')`);
+await sql.query(`CREATE UNIQUE INDEX IF NOT EXISTS tithe_active_submission ON tithe_operations(subject) WHERE status IN ('SUBMITTING','SIGNED','SUBMISSION_UNCERTAIN','RECOVERING')`);
+await sql.query(`CREATE INDEX IF NOT EXISTS tithe_recovery_due ON tithe_operations(next_retry_at,created_at) WHERE status NOT IN ('FINALIZED','FAILED','ABORTED','CANCELED')`);
+
+await sql.query(`DROP INDEX IF EXISTS tithe_one_submission`);
 console.log('Neon schema is ready. No sample data inserted.');

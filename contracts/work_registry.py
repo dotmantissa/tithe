@@ -162,7 +162,7 @@ class WorkRegistry(gl.Contract):
         prices = {}
         for key, value in schedule.items():
             require(key in ("research", "commercial", "quote", "derivative") and isinstance(value, str) and value.isdigit() and 0 <= int(value) < 2**128, "Prices must be atto amounts as decimal strings")
-            prices[key] = value
+            prices[key] = str(int(value))
         require(licence_class in prices, "Default licence class must have a price")
         return {"terms_text": "\n".join(lines), "clauses": ["C" + str(i+1) + ": " + line for i,line in enumerate(lines)], "price_schedule_atto": prices, "licence_class": licence_class, "effective_at": now()}
 
