@@ -168,7 +168,7 @@ export async function refreshOperation(subject: string, id: string) {
    await sql`UPDATE tithe_operations SET status=${state},next_retry_at=now()+interval '20 seconds',updated_at=now() WHERE id=${id} AND subject=${subject} AND phase='FUNDING'`;
    return publicOperation({...op,status:state});
   }
-  const error=state==='FAILED'?'The network did not apply this action. Any funded amount remains withdrawable credit.':null;
+  const error=state==='FAILED'?failureMessage(op.kind):null;
   const result=success&&decided?{record_id:op.target_id,contract:op.contract_name,method:op.function_name}:null;
   const changed=op.status!==state||!op.indexed;
   // Acceptance is provisional: only finalized targets enter the public index.
@@ -189,4 +189,13 @@ export async function cancelOperation(subject:string,id:string){
  const raw=openTransaction(op.outbox_ciphertext,subject,id+':ACTION');if((parseTransaction(raw).value||0n)!==0n)throw new AppError('Native funding remains protected until it is credited.',409);await validateSavedTransaction(raw,op.tx_hash,accountFor(subject).address,op.outbox_nonce!);
  await signer(subject).cancelTransaction({hash:op.tx_hash as Hash});
  return refreshOperation(subject,id);
+}
+
+export function failureMessage(kind:string){
+ if(kind==='rule')return 'The panel did not apply a ruling. Existing bonds remain posted. Retry within the hearing window or recover after its deadline.';
+ if(kind==='settle')return 'Settlement was not applied. Posted funds remain in the court; read the docket before trying again.';
+ if(['recover','cancel'].includes(kind))return 'The court did not apply this recovery. Read the docket and its deadlines before trying again.';
+ if(kind==='release')return 'The fee release was not applied. Read the licence and its escrow status before trying again.';
+ if(kind==='withdraw')return 'The withdrawal was not applied. Read your current credit before trying again.';
+ return 'The network did not apply this action. Any amount funded for this action remains withdrawable credit.';
 }

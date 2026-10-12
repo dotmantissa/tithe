@@ -6,7 +6,7 @@ vi.mock('../../src/lib/db',()=>({database:()=>m.sql}));
 vi.mock('../../src/lib/chain',()=>({accountFor:()=>({address:m.address}),chain:{getTransaction:m.get,sendRawTransaction:m.send},executionSucceeded:()=>true,operationState:()=>m.state,normalize:(v:unknown)=>v,addresses:{},signer:()=>({cancelTransaction:m.cancel})}));
 const indexed=vi.fn();
 vi.mock('../../src/lib/indexer',()=>({reconcileTarget:(...args:unknown[])=>indexed(...args)}));
-import {resumeOperation,refreshOperation,publicOperation,abortExpiredUnsent,cancelOperation} from '../../src/lib/operations';
+import {resumeOperation,refreshOperation,publicOperation,abortExpiredUnsent,cancelOperation,failureMessage} from '../../src/lib/operations';
 import {sealTransaction} from '../../src/lib/outbox';
 const account=privateKeyToAccount(('0x'+'1'.repeat(64)) as `0x${string}`);
 beforeEach(async()=>{
@@ -66,4 +66,9 @@ it('does not cancel an attached native payment even if its stored phase is misla
 it('never publishes accepted operation targets in the durable public index',async()=>{
  indexed.mockClear();m.row.indexed=false;m.state='ACCEPTED';await refreshOperation('owner','operation');expect(indexed).not.toHaveBeenCalled();
  m.state='FINALIZED';await refreshOperation('owner','operation');expect(indexed).toHaveBeenCalledWith('desk','record');
+});
+
+it('describes held hearing bonds accurately after a failed consensus ruling',()=>{
+ expect(failureMessage('rule')).toContain('bonds remain posted');expect(failureMessage('rule')).not.toContain('withdrawable credit');
+ expect(failureMessage('licence')).toContain('withdrawable credit');expect(failureMessage('settle')).toContain('Posted funds remain in the court');
 });
