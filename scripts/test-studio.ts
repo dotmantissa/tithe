@@ -80,7 +80,7 @@ const terms='Research, quotation, copying and commercial use of the registered e
 await write('register',creator,'registry','register_work',[state.source.url,state.source.hash,terms,'{"research":"0","commercial":"100"}','research','Studio integration verification']);
 const works=await call<Work[]>('registry','list_works');assert.equal(works.length,1);assert.equal(works[0].content_hash,state.source.hash);assert.equal(works[0].terms.clauses.length,1);
 const work=works[0];
-await write('approve',lab,'desk','request_licence',[work.work_id,'Research by quoting the entire published example in our internal study.','research']);
+await write('approve',lab,'desk','request_licence',[work.work_id,'Research by quoting the entire published example in our internal study.','research',work.version,'0']);
 let licences=await call<Licence[]>('desk','list_licences');assert.equal(licences[0].decision,'APPROVE');assert.equal(licences[0].clause,'C1');assert.equal(licences[0].terms_version,1);
 const usedAt=licences[0].issued_at;
 await write('claim',creator,'court','file_claim',[work.work_id,state.source.url,state.source.hash,lab.address,usedAt],100n);
@@ -94,7 +94,7 @@ await write('review',lab,'court','rule',[claim.claim_id]);
 claims=await call<Claim[]>('court','list_claims');assert.equal(claims[0].appeals?.length,1);assert.equal(claims[0].ruling?.decision,'DERIVATIVE_WITHIN_TERMS');
 await write('terms',creator,'registry','update_terms',[work.work_id,'Commercial use is not permitted under this registered licence. All commercial licence requests must be refused.','{"commercial":"100"}','commercial']);
 const oldTerms=await call<{terms_text:string}>('registry','get_terms',[work.work_id,1]);assert.equal(oldTerms.terms_text,terms);
-await write('refuse',lab,'desk','request_licence',[work.work_id,'Use the entire example commercially in a competing paid product.','commercial'],100n);
+await write('refuse',lab,'desk','request_licence',[work.work_id,'Use the entire example commercially in a competing paid product.','commercial',2,'100'],100n);
 licences=await call<Licence[]>('desk','list_licences');assert.equal(licences[1].decision,'REFUSE');assert.equal(licences[1].clause,'C1');
 const credit=await call<{credit_atto:string}>('desk','get_account',[lab.address]);
 if(!state.transactions.withdraw)assert.equal(credit.credit_atto,'100');

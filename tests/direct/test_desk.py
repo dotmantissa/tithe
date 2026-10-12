@@ -17,7 +17,7 @@ def test_approve_escrow_release_once(direct_deploy,direct_vm,direct_alice,direct
     work,_=external_views
     desk=setup_desk(direct_deploy,direct_vm,direct_bob)
     answer(direct_vm)
-    key=desk.request_licence(work['work_id'],'Commercial use with attribution.')
+    key=desk.request_licence(work['work_id'],'Commercial use with attribution.', expected_terms_version=1, expected_fee_atto='100')
     assert desk.get_licence(key)['terms_version']==1
     assert desk.get_account(("0x" + direct_alice.hex()))['escrow_atto']=='100'
     assert direct_vm.run_validator()
@@ -34,7 +34,7 @@ def test_refuse_refunds_and_disagreement(direct_deploy,direct_vm,direct_bob,exte
     work,_=external_views
     desk=setup_desk(direct_deploy,direct_vm,direct_bob)
     answer(direct_vm,'REFUSE')
-    key=desk.request_licence(work['work_id'],'Competing commercial reproduction.')
+    key=desk.request_licence(work['work_id'],'Competing commercial reproduction.', expected_terms_version=1, expected_fee_atto='100')
     assert desk.get_licence(key)['decision']=='REFUSE'
     assert desk.get_account(("0x" + direct_bob.hex()))['credit_atto']=='100'
     assert desk.get_account(("0x" + direct_bob.hex()))['escrow_atto']=='0'
@@ -48,7 +48,7 @@ def test_request_validation(direct_deploy,direct_vm,direct_bob,external_views,va
     desk=setup_desk(direct_deploy,direct_vm,direct_bob)
     direct_vm.value=value
     with direct_vm.expect_revert(error):
-        desk.request_licence(work['work_id'],description,category)
+        desk.request_licence(work['work_id'],description,category, expected_terms_version=1, expected_fee_atto='100')
     assert desk.get_count()==0
 
 
@@ -58,5 +58,5 @@ def test_bad_llm_fails_closed(direct_deploy,direct_vm,direct_bob,external_views,
     desk=setup_desk(direct_deploy,direct_vm,direct_bob)
     direct_vm.mock_llm(r'.*',raw)
     with direct_vm.expect_revert('LLM_ERROR'):
-        desk.request_licence(work['work_id'],'Commercial reproduction.')
+        desk.request_licence(work['work_id'],'Commercial reproduction.', expected_terms_version=1, expected_fee_atto='100')
     assert desk.get_count()==0

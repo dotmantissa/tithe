@@ -62,3 +62,15 @@ describe('scheduled maintenance authorization',()=>{
   it('rejects multibyte credentials without an internal comparison error',()=>{vi.stubEnv('CRON_SECRET','a'.repeat(32));expect(()=>authorizeMaintenance(new Request('https://tithe.example/api/maintenance',{headers:{Authorization:'Bearer '+ 'ü'.repeat(32)}}))).toThrow('Unauthorized.');});
   it('accepts the configured scheduler secret',()=>{vi.stubEnv('CRON_SECRET','a-long-private-maintenance-value');expect(()=>authorizeMaintenance(new Request('https://tithe.example/api/maintenance',{headers:{Authorization:'Bearer a-long-private-maintenance-value'}}))).not.toThrow();});
 });
+
+describe('explicit spending consent',()=>{
+  const action={kind:'licence',work_id:'a'.repeat(64),intended_use_text:'Quote with the agreed attribution.',use_class:'quote',expected_terms_version:1,expected_fee_atto:'0'};
+  it('requires the version and exact fee on every request',()=>{
+    expect(actionSchema.parse(action)).toEqual(action);
+    for(const field of ['expected_terms_version','expected_fee_atto']){
+      const incomplete={...action} as Record<string,unknown>;delete incomplete[field];
+      expect(()=>actionSchema.parse(incomplete)).toThrow();
+    }
+  });
+  it('refuses unknown consent fields rather than silently discarding them',()=>expect(()=>actionSchema.parse({...action,max_fee:'100'})).toThrow());
+});

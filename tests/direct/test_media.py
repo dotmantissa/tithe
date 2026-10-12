@@ -25,7 +25,7 @@ def test_desk_refuses_animation_even_when_registry_view_is_imported(direct_deplo
     direct_vm.mock_web(r'.*',{'status':200,'body':raw})
     desk=setup_desk(direct_deploy,direct_vm,direct_bob)
     with direct_vm.expect_revert('Animated images'):
-        desk.request_licence(work['work_id'],'Commercial use with attribution.')
+        desk.request_licence(work['work_id'],'Commercial use with attribution.', expected_terms_version=1, expected_fee_atto='100')
     assert desk.get_count()==0
 
 @pytest.mark.parametrize('raw', ANIMATIONS)
@@ -65,7 +65,7 @@ def test_desk_passes_still_image_to_the_panel(direct_deploy,direct_vm,direct_bob
         seen.append(images)
         return {'decision':'APPROVE','clause':'C2','reason':'The proposed image use follows the registered commercial clause.'}
     monkeypatch.setattr(gl.nondet,'exec_prompt',assess)
-    key=desk.request_licence(work['work_id'],'Commercial use with attribution.')
+    key=desk.request_licence(work['work_id'],'Commercial use with attribution.', expected_terms_version=1, expected_fee_atto='100')
     assert desk.get_licence(key)['decision']=='APPROVE'
     assert direct_vm.run_validator()
     assert seen==[[raw],[raw]]

@@ -32,7 +32,8 @@ export async function submit(subject: string, action: Action, idempotency: strin
       const work=await read<Work>('registry','get_work',[action.work_id]);
       const price=work.terms.price_schedule_atto[action.use_class];
       if(price===undefined) throw new AppError('The creator has not priced that use.');
-      value=BigInt(price);contract='desk';method='request_licence';args=[action.work_id,action.intended_use_text,action.use_class];break;
+      if(work.version!==action.expected_terms_version||price!==action.expected_fee_atto) throw new AppError('The terms or price changed. Read the latest terms and agree to the current fee before trying again.',409);
+      value=BigInt(action.expected_fee_atto);contract='desk';method='request_licence';args=[action.work_id,action.intended_use_text,action.use_class,action.expected_terms_version,action.expected_fee_atto];break;
     }
     case 'claim': {
       const artifact=await inspectArtifact(action.output_url);

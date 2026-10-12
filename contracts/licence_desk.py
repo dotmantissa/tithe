@@ -101,12 +101,13 @@ class LicenceDesk(gl.Contract):
         self.registry = Address(registry)
 
     @gl.public.write.payable
-    def request_licence(self, work_id: str, intended_use_text: str, use_class: str = "commercial") -> str:
+    def request_licence(self, work_id: str, intended_use_text: str, use_class: str = "commercial", expected_terms_version: int = 0, expected_fee_atto: str = "") -> str:
         require(10 <= len(intended_use_text) <= 8000, "Describe your use in 10 to 8000 characters")
         work = gl.get_contract_at(self.registry).view().get_work(work_id)
         terms = work["terms"]
         require(use_class in terms["price_schedule_atto"], "No price for this use class")
         fee = int(terms["price_schedule_atto"][use_class])
+        require(expected_terms_version == work["version"] and expected_fee_atto == str(fee), "Terms or price changed; confirm the current version and exact fee")
         require(gl.message.value == fee, "Deposit the exact published fee")
         def assess():
             artifact = fetch_artifact(work["url"], work["content_hash"])
