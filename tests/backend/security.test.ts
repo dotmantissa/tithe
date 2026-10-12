@@ -76,3 +76,19 @@ describe('explicit spending consent',()=>{
 });
 
 it('does not stop polling an accepted execution rejection before its final network outcome',()=>expect(operationState({statusName:'ACCEPTED',txExecutionResultName:'ROLLBACK' as never} as Parameters<typeof operationState>[0])).toBe('ACCEPTED_REJECTED'));
+
+
+describe('Studio canonical consensus outcomes',()=>{
+ const leader={mode:'leader',execution_result:'SUCCESS'};
+ it.each([2,3,4,5,7])('rejects finalized outcome%s despite successful leader execution',result=>{
+  const tx={status:7,result,consensus_data:{leader_receipt:[leader]}} as never;
+  expect(executionSucceeded(tx)).toBe(false);expect(operationState(tx)).toBe('FAILED');
+ });
+ it('accepts majority agreement only when current leader execution succeeded',()=>{
+  expect(executionSucceeded({result:6,consensus_data:{leader_receipt:[leader]}} as never)).toBe(true);
+  expect(executionSucceeded({result:6,consensus_data:{leader_receipt:[{mode:'leader',execution_result:'ERROR'}]}} as never)).toBe(false);
+ });
+ it('does not trust an old successful leader over the current failed one',()=>expect(executionSucceeded({result:6,consensus_data:{leader_receipt:[leader,{mode:'leader',execution_result:'ERROR'}]}} as never)).toBe(false));
+ it('checks the raw Studio result_name before a contradictory execution flag',()=>expect(executionSucceeded({result_name:'MAJORITY_DISAGREE',txExecutionResult:1} as never)).toBe(false));
+ it('never uses a leader-only receipt without a consensus outcome',()=>expect(executionSucceeded({consensus_data:{leader_receipt:[leader]}} as never)).toBe(false));
+});

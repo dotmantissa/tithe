@@ -5,7 +5,7 @@ import {database} from './db';
 import {AppError} from './errors';
 import {rpcClass} from './rpc-context';
 import { createClient, createAccount } from 'genlayer-js';
-import { TransactionHashVariant, TransactionStatus, transactionsStatusNumberToName, type CalldataEncodable, type GenLayerTransaction } from 'genlayer-js/types';
+import { TransactionHashVariant, TransactionStatus, transactionResultNumberToName, transactionsStatusNumberToName, type CalldataEncodable, type GenLayerTransaction } from 'genlayer-js/types';
 import { studionet } from 'genlayer-js/chains';
 import { createHmac } from 'node:crypto';
 import deployment from '../../deployments/studionet.json';
@@ -60,10 +60,18 @@ export async function read<T>(contract: ContractName, method: string, args: Call
   try{return await promise;}finally{flights.delete(flightKey);}
 }
 export function executionSucceeded(tx: GenLayerTransaction): boolean {
-  if (tx.txExecutionResultName === 'FINISHED_WITH_RETURN' || tx.txExecutionResult === 1) return true;
-  const data = normalize<Record<string, unknown>>(tx);
-  const consensus = data.consensus_data as { leader_receipt?: { execution_result?: string }[] } | undefined;
-  return consensus?.leader_receipt?.[0]?.execution_result === 'SUCCESS';
+  const data=normalize<Record<string,unknown>>(tx);
+  const outcome=String(data.resultName||data.result_name||transactionResultNumberToName[String(data.result) as keyof typeof transactionResultNumberToName]||'');
+  // A successful candidate execution does not mean validators accepted it.
+  // Studio can FINALIZE MAJORITY_DISAGREE and apply no state at all.
+  if(outcome&&!['MAJORITY_AGREE','SUCCESS'].includes(outcome))return false;
+  if(tx.txExecutionResultName!==undefined)return tx.txExecutionResultName==='FINISHED_WITH_RETURN';
+  if(tx.txExecutionResult!==undefined)return tx.txExecutionResult===1;
+  if(!['MAJORITY_AGREE','SUCCESS'].includes(outcome))return false;
+  const consensus=data.consensus_data as {leader_receipt?:{mode?:string;execution_result?:string}[]} | undefined;
+  const receipts=consensus?.leader_receipt||[];
+  const leader=receipts.filter(r=>r.mode==='leader').at(-1)||receipts[0];
+  return leader?.execution_result==='SUCCESS';
 }
 export { TransactionStatus };
 
