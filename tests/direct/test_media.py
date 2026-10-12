@@ -1,3 +1,4 @@
+from conftest import SOURCE,USAGE,encoded,panel,appeal,RULING_KEYS
 from conftest import fund
 import hashlib
 import pytest
@@ -15,12 +16,13 @@ def test_registry_refuses_animation(direct_deploy,direct_vm,raw):
     direct_vm.mock_web(r'.*',{'status':200,'body':raw})
     registry=direct_deploy('contracts/work_registry.py')
     with direct_vm.expect_revert('Animated images'):
-        registry.register_work(URL,hashlib.sha256(raw).hexdigest(),TERMS,PRICES,'commercial')
+        registry.register_work(URL,hashlib.sha256(raw).hexdigest(),TERMS,PRICES,'commercial', artifact_base64=encoded(raw))
     assert registry.get_count()==0
 
 @pytest.mark.parametrize('raw', ANIMATIONS)
 def test_desk_refuses_animation_even_when_registry_view_is_imported(direct_deploy,direct_vm,direct_bob,external_views,raw):
     work,_=external_views
+    work['artifact_base64']=encoded(raw)
     work['content_hash']=hashlib.sha256(raw).hexdigest()
     direct_vm.clear_mocks()
     direct_vm.mock_web(r'.*',{'status':200,'body':raw})
@@ -39,13 +41,14 @@ def test_court_refuses_animated_output(direct_deploy,direct_vm,direct_alice,dire
     direct_vm.mock_web(r'https://example.org/orchard.txt',{'status':200,'body':SOURCE})
     direct_vm.mock_web(r'https://example.org/animated.png',{'status':200,'body':raw})
     with direct_vm.expect_revert('Animated images'):
-        c.file_claim(work['work_id'],output,hashlib.sha256(raw).hexdigest(),'0x'+direct_bob.hex(),1767268800,terms_version=1)
+        c.file_claim(work['work_id'],output,hashlib.sha256(raw).hexdigest(),'0x'+direct_bob.hex(),1767268800,terms_version=1, output_base64=encoded(raw), usage_json=USAGE)
     assert c.get_count()==0
 
 
 def image_evidence(direct_vm,work):
     import base64
     raw=base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAADklEQVR4nGP4DwYMEAoAU7oL9ZisIGcAAAAASUVORK5CYII=')
+    work['artifact_base64']=encoded(raw)
     work['content_hash']=hashlib.sha256(raw).hexdigest()
     work['kind']='image'
     direct_vm.clear_mocks()
@@ -73,16 +76,17 @@ def test_court_image_signature_is_reproducible(direct_deploy,direct_vm,direct_al
     work,_=external_views
     raw=image_evidence(direct_vm,work)
     c=court(direct_deploy,direct_vm,direct_alice)
-    key=c.file_claim(work['work_id'],URL,work['content_hash'],'0x'+direct_bob.hex(),1767268800, terms_version=1)
+    key=c.file_claim(work['work_id'],URL,work['content_hash'],'0x'+direct_bob.hex(),1767268800, terms_version=1, output_base64=encoded(raw), usage_json=USAGE)
     direct_vm.sender=direct_bob
     fund(c,direct_vm,100)
-    c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1)
+    c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1, usage_json=USAGE)
     from genlayer import gl
     seen=[]
     def assess(prompt,*,images,response_format):
         seen.append(images)
+        if prompt.startswith('Tithe reasoning verification'):return {'supported':True}
         assert 'spatial color signature' in prompt
-        return {'decision':'DERIVATIVE_WITHIN_TERMS','clause':'C1','damages_band':'NONE'}
+        return panel({'decision':'DERIVATIVE_WITHIN_TERMS','clause':'C1','damages_band':'NONE'})
     monkeypatch.setattr(gl.nondet,'exec_prompt',assess)
     ruling=c.rule(key)
     assert ruling['distance_ppm']==0
@@ -104,7 +108,7 @@ def test_registry_rejects_corrupt_still_images(direct_deploy,direct_vm,raw):
     direct_vm.mock_web(r'.*',{'status':200,'body':raw})
     expected='Invalid or unsupported still image' if raw.startswith(b'\x89PNG') else 'Convert this image to PNG'
     with direct_vm.expect_revert(expected):
-        c.register_work(URL,hashlib.sha256(raw).hexdigest(),TERMS,PRICES,'commercial')
+        c.register_work(URL,hashlib.sha256(raw).hexdigest(),TERMS,PRICES,'commercial', artifact_base64=encoded(raw))
     assert c.get_count()==0
 
 
@@ -115,5 +119,5 @@ def test_valid_webp_is_rejected_before_native_decode(direct_deploy,direct_vm):
     direct_vm.mock_web(r'.*',{'status':200,'body':raw})
     registry=direct_deploy('contracts/work_registry.py')
     with direct_vm.expect_revert('Convert this image to PNG'):
-        registry.register_work(URL,hashlib.sha256(raw).hexdigest(),TERMS,PRICES,'commercial')
+        registry.register_work(URL,hashlib.sha256(raw).hexdigest(),TERMS,PRICES,'commercial', artifact_base64=encoded(raw))
     assert registry.get_count()==0

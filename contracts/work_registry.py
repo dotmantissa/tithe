@@ -4,6 +4,7 @@ from genlayer import *
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
+import base64
 import json
 import re
 from urllib.parse import urlsplit
@@ -64,12 +65,14 @@ class ImageBytes:
         pass
 
 
-def fetch_artifact(url: str, content_hash: str) -> dict:
-    public_url(url)
-    response = gl.nondet.web.get(url)
-    if response.status != 200:
-        raise gl.vm.UserError("[EXTERNAL] Artifact unavailable")
-    raw = response.body
+def committed_artifact(encoded: str, content_hash: str) -> dict:
+    # URLs are provenance only. No validator performs a caller-controlled fetch.
+    require(isinstance(encoded, str) and 0 < len(encoded) <= 2_666_668, "Commit artifact bytes, up to 2 MB")
+    try:
+        raw = base64.b64decode(encoded, validate=True)
+    except Exception:
+        raise gl.vm.UserError("[EXPECTED] Invalid artifact encoding")
+    require(base64.b64encode(raw).decode() == encoded, "Use canonical base64 artifact bytes")
     require(0 < len(raw) <= 2_000_000, "Artifact must be between 1 byte and 2 MB")
     require(hashlib.sha256(raw).hexdigest() == content_hash, "Content hash changed")
     is_image = raw.startswith((b"\x89PNG\r\n\x1a\n", b"\xff\xd8\xff", b"RIFF"))
@@ -149,6 +152,7 @@ class WorkRegistry(gl.Contract):
     work_ids: DynArray[str]
     creator_works: TreeMap[Address, DynArray[str]]
     versions: TreeMap[str, str]
+    artifacts: TreeMap[str, str]
 
     def __init__(self):
         self.revision = u256(0)
@@ -156,6 +160,7 @@ class WorkRegistry(gl.Contract):
     def _terms(self, terms_text: str, price_schedule_atto: str, licence_class: str) -> dict:
         lines = [line.strip() for line in terms_text.splitlines() if line.strip()]
         require(1 <= len(lines) <= 64 and 10 <= len(terms_text) <= 12000, "Write between 1 and 64 clauses, up to 12000 characters")
+        require(len(set(" ".join(line.casefold().split()) for line in lines)) == len(lines), "Duplicate clauses are not allowed")
         try:
             schedule = json.loads(price_schedule_atto)
         except (ValueError, TypeError):
@@ -169,19 +174,17 @@ class WorkRegistry(gl.Contract):
         return {"terms_text": "\n".join(lines), "clauses": ["C" + str(i+1) + ": " + line for i,line in enumerate(lines)], "price_schedule_atto": prices, "licence_class": licence_class, "effective_at": now()}
 
     @gl.public.write
-    def register_work(self, url: str, content_hash: str, terms_text: str, price_schedule_atto: str, licence_class: str, title: str = "Untitled work") -> str:
+    def register_work(self, url: str, content_hash: str, terms_text: str, price_schedule_atto: str, licence_class: str, title: str = "Untitled work", artifact_base64: str = "") -> str:
         public_url(url)
         require(bool(re.fullmatch("[0-9a-f]{64}", content_hash)), "Use a lowercase SHA256 content hash")
         require(1 <= len(title.strip()) <= 160, "Title must be between 1 and 160 characters")
         terms = self._terms(terms_text, price_schedule_atto, licence_class)
-        def verify():
-            artifact = fetch_artifact(url, content_hash)
-            return artifact["kind"]
-        kind = gl.eq_principle.strict_eq(verify)
+        kind = committed_artifact(artifact_base64, content_hash)["kind"]
         creator = gl.message.sender_address
         work_id = hashlib.sha256((creator.as_hex + ":" + content_hash + ":" + url).encode()).hexdigest()
         require(work_id not in self.works, "This work is already registered by you")
         self.works[work_id] = Work(creator, url, content_hash, kind, title.strip(), u256(1), u256(now()))
+        self.artifacts[work_id] = artifact_base64
         self.work_ids.append(work_id)
         self.creator_works.get_or_insert_default(creator).append(work_id)
         self.versions[work_id + ":1"] = json.dumps(terms, sort_keys=True)
@@ -205,7 +208,12 @@ class WorkRegistry(gl.Contract):
     def get_work(self, work_id: str) -> dict:
         require(work_id in self.works, "Work not found")
         work = self.works[work_id]
-        return {"work_id": work_id, "creator": work.creator.as_hex, "url": work.url, "content_hash": work.content_hash, "kind": work.kind, "title": work.title, "version": int(work.version), "registered_at": int(work.registered_at), "terms": self.get_terms(work_id, int(work.version))}
+        return {"work_id": work_id, "creator": work.creator.as_hex, "url": work.url, "content_hash": work.content_hash, "kind": work.kind, "title": work.title, "version": int(work.version), "registered_at": int(work.registered_at), "terms": self.get_terms(work_id, int(work.version)), "terms_version_limit": 128, "evidence_preserved": True}
+
+    @gl.public.view
+    def get_artifact(self, work_id: str) -> str:
+        require(work_id in self.artifacts, "Work evidence not found")
+        return self.artifacts[work_id]
 
     @gl.public.view
     def get_terms(self, work_id: str, version: int) -> dict:
@@ -262,3 +270,11 @@ class WorkRegistry(gl.Contract):
     @gl.public.view
     def get_clock(self) -> dict:
         return {"unix_seconds": now()}
+
+    @gl.public.view
+    def lookup_work(self, work_id: str) -> dict:
+        return {"found": True, "record": self.get_work(work_id)} if work_id in self.works else {"found": False}
+
+    @gl.public.view
+    def lookup_terms(self, work_id: str, version: int) -> dict:
+        return {"found": True, "record": self.get_terms(work_id, version)} if work_id + ":" + str(version) in self.versions else {"found": False}

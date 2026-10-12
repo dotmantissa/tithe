@@ -1,3 +1,4 @@
+from conftest import SOURCE,USAGE,encoded,panel,appeal,RULING_KEYS
 import json
 import pytest
 from conftest import URL,HASH,fund
@@ -16,7 +17,7 @@ def court(direct_deploy,direct_vm,direct_alice):
 
 
 def claim(c,work,bob):
-    return c.file_claim(work['work_id'],URL,HASH,("0x" + bob.hex()),1767268800, terms_version=1)
+    return c.file_claim(work['work_id'],URL,HASH,("0x" + bob.hex()),1767268800, terms_version=1, output_base64=encoded(SOURCE), usage_json=USAGE)
 
 
 @pytest.mark.parametrize('decision,band,creator_credit,respondent_credit',[
@@ -31,8 +32,8 @@ def test_bonds_ruling_and_settlement(direct_deploy,direct_vm,direct_alice,direct
         c.rule(key)
     direct_vm.sender=direct_bob
     fund(c,direct_vm,100)
-    c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1)
-    direct_vm.mock_llm(r'Tithe dispute panel.*',json.dumps({'decision':decision,'clause':'C2','damages_band':band,'reason':'The committed output was assessed against the registered clause.'}))
+    c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1, usage_json=USAGE)
+    direct_vm.mock_llm(r'Tithe reasoning verification.*', '{"supported":true}');direct_vm.mock_llm(r'Tithe dispute panel.*',json.dumps(panel({'decision':decision,'clause':'C2','damages_band':band,'reason':'The committed output was assessed against the registered clause.'})))
     ruling=c.rule(key)
     assert ruling['distance_ppm']==0
     assert direct_vm.run_validator()
@@ -60,11 +61,11 @@ def test_claim_access_and_response_bond(direct_deploy,direct_vm,direct_alice,dir
     direct_vm.sender=direct_charlie
     with direct_vm.expect_revert('Only the respondent'):
         fund(c,direct_vm,100)
-        c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1)
+        c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1, usage_json=USAGE)
     direct_vm.sender=direct_bob
     fund(c,direct_vm,99)
     with direct_vm.expect_revert('exact response bond'):
-        c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1)
+        c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1, usage_json=USAGE)
 
 
 def test_unanswered_claim_returns_bond_without_verdict(direct_deploy,direct_vm,direct_alice,direct_bob,external_views):
@@ -87,7 +88,7 @@ def test_rejects_someone_elses_licence(direct_deploy,direct_vm,direct_alice,dire
     direct_vm.sender=direct_bob
     with direct_vm.expect_revert('does not cover'):
         fund(c,direct_vm,100)
-        c.respond(key,'','wrong', accepted_used_at=1767268800, accepted_terms_version=1)
+        c.respond(key,'','wrong', accepted_used_at=1767268800, accepted_terms_version=1, usage_json=USAGE)
 
 
 def test_invalid_damages_cannot_move_money(direct_deploy,direct_vm,direct_alice,direct_bob,external_views):
@@ -96,8 +97,8 @@ def test_invalid_damages_cannot_move_money(direct_deploy,direct_vm,direct_alice,
     key=claim(c,work,direct_bob)
     direct_vm.sender=direct_bob
     fund(c,direct_vm,100)
-    c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1)
-    direct_vm.mock_llm(r'.*',json.dumps({'decision':'NO_USE','clause':'C1','damages_band':'HIGH','reason':'This output does not establish use of the work.'}))
+    c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1, usage_json=USAGE)
+    direct_vm.mock_llm(r'Tithe reasoning verification.*', '{"supported":true}');direct_vm.mock_llm(r'Tithe dispute panel.*',json.dumps(panel({'decision':'NO_USE','clause':'C1','damages_band':'HIGH','reason':'This output does not establish use of the work.'})))
     with direct_vm.expect_revert('Invalid damages'):
         c.rule(key)
     assert c.get_claim(key)['status']=='READY'
@@ -114,12 +115,12 @@ def test_bonded_appeal_preserves_history_and_conserves_funds(direct_deploy,direc
     key=claim(c,work,direct_bob)
     direct_vm.sender=direct_bob
     fund(c,direct_vm,100)
-    c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1)
-    direct_vm.mock_llm(r'.*',json.dumps({'decision':'USE','clause':'C2','damages_band':'HIGH','reason':'The output uses the work outside the published terms.'}))
+    c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1, usage_json=USAGE)
+    direct_vm.mock_llm(r'Tithe reasoning verification.*', '{"supported":true}');direct_vm.mock_llm(r'Tithe dispute panel.*',json.dumps(panel({'decision':'USE','clause':'C2','damages_band':'HIGH','reason':'The output uses the work outside the published terms.'})))
     c.rule(key)
     direct_vm.sender=direct_bob if appealer=='respondent' else direct_alice
     fund(c,direct_vm,200)
-    c.appeal_claim(key,len(c.get_claim(key)['appeals'])+1,str(100*2**(len(c.get_claim(key)['appeals'])+1)))
+    appeal(c,direct_vm,key,len(c.get_claim(key)['appeals'])+1,str(100*2**(len(c.get_claim(key)['appeals'])+1)), grounds="Review the established use and the clause applied.")
     assert c.get_claim(key)['status']=='REVIEW_PENDING'
     assert c.get_claim(key)['appeals'][0]['previous_ruling']['decision']=='USE'
     assert c.get_account(('0x'+direct_bob.hex()))['escrow_atto']=='400'
@@ -128,7 +129,7 @@ def test_bonded_appeal_preserves_history_and_conserves_funds(direct_deploy,direc
     direct_vm.clear_mocks()
     from conftest import SOURCE
     direct_vm.mock_web(r'https://example.org/.*',{'status':200,'body':SOURCE})
-    direct_vm.mock_llm(r'.*',json.dumps({'decision':final_decision,'clause':'C2','damages_band':final_band,'reason':'A fresh panel has assessed the same committed artifacts.'}))
+    direct_vm.mock_llm(r'Tithe reasoning verification.*', '{"supported":true}');direct_vm.mock_llm(r'Tithe dispute panel.*',json.dumps(panel({'decision':final_decision,'clause':'C2','damages_band':final_band,'reason':'A fresh panel has assessed the same committed artifacts.'})))
     c.rule(key)
     direct_vm.warp('2026-01-04T12:00:00Z')
     c.settle(key)
@@ -143,28 +144,28 @@ def test_appeal_access_fee_and_deadline(direct_deploy,direct_vm,direct_alice,dir
     key=claim(c,work,direct_bob)
     direct_vm.sender=direct_bob
     fund(c,direct_vm,100)
-    c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1)
-    direct_vm.mock_llm(r'.*',json.dumps({'decision':'USE','clause':'C2','damages_band':'LOW','reason':'The output omitted the required creator attribution.'}))
+    c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1, usage_json=USAGE)
+    direct_vm.mock_llm(r'Tithe reasoning verification.*', '{"supported":true}');direct_vm.mock_llm(r'Tithe dispute panel.*',json.dumps(panel({'decision':'USE','clause':'C2','damages_band':'LOW','reason':'The output omitted the required creator attribution.'})))
     c.rule(key)
     direct_vm.sender=direct_charlie
     direct_vm.value=200
     with direct_vm.expect_revert('Only a party'):
-        c.appeal_claim(key,len(c.get_claim(key)['appeals'])+1,str(100*2**(len(c.get_claim(key)['appeals'])+1)))
+        appeal(c,direct_vm,key,len(c.get_claim(key)['appeals'])+1,str(100*2**(len(c.get_claim(key)['appeals'])+1)), grounds="Review the established use and the clause applied.")
     direct_vm.sender=direct_bob
     direct_vm.value=100
     with direct_vm.expect_revert('escalating appeal bond'):
-        c.appeal_claim(key,len(c.get_claim(key)['appeals'])+1,str(100*2**(len(c.get_claim(key)['appeals'])+1)))
+        appeal(c,direct_vm,key,len(c.get_claim(key)['appeals'])+1,str(100*2**(len(c.get_claim(key)['appeals'])+1)), grounds="Review the established use and the clause applied.")
     direct_vm.warp('2026-01-04T12:00:00Z')
     direct_vm.value=200
     with direct_vm.expect_revert('Appeal window closed'):
-        c.appeal_claim(key,len(c.get_claim(key)['appeals'])+1,str(100*2**(len(c.get_claim(key)['appeals'])+1)))
+        appeal(c,direct_vm,key,len(c.get_claim(key)['appeals'])+1,str(100*2**(len(c.get_claim(key)['appeals'])+1)), grounds="Review the established use and the clause applied.")
 
 @pytest.mark.parametrize('left,right,agrees',[(0,1000,True),(0,1001,False),(200000,210526,True),(200000,210527,False)])
 def test_distance_tolerance_boundaries(direct_deploy,direct_vm,direct_alice,left,right,agrees):
     import sys
     c=court(direct_deploy,direct_vm,direct_alice)
     compare=sys.modules[c.__module__].same_ruling
-    record={'decision':'USE','clause':'C1','damages_band':'LOW','policy_hash':'','terms_basis':'USE_TERMS','distance_ppm':left}
+    record={**panel({'decision':'USE','clause':'C1','damages_band':'LOW'}), 'decision':'USE','clause':'C1','damages_band':'LOW','policy_hash':'','terms_basis':'USE_TERMS','distance_ppm':left}
     assert compare(record,{**record,'distance_ppm':right}) is agrees
     assert compare({**record,'distance_ppm':right},record) is agrees
     assert not compare(record,{**record,'policy_hash':'changed','distance_ppm':right})

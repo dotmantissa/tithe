@@ -1,3 +1,4 @@
+from conftest import SOURCE,USAGE,encoded,panel,appeal,RULING_KEYS
 from conftest import fund
 import json
 import pytest
@@ -45,10 +46,10 @@ def test_court_rejects_malformed_and_unbound_leader_fields(direct_deploy,direct_
     key=claim(c,work,direct_bob)
     direct_vm.sender=direct_bob
     fund(c,direct_vm,100)
-    c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1)
-    direct_vm.mock_llm(r'Tithe dispute panel.*',json.dumps({'decision':'USE','clause':'C2','damages_band':'LOW'}))
+    c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1, usage_json=USAGE)
+    direct_vm.mock_llm(r'Tithe reasoning verification.*', '{"supported":true}');direct_vm.mock_llm(r'Tithe dispute panel.*',json.dumps(panel({'decision':'USE','clause':'C2','damages_band':'LOW'})))
     ruling=c.rule(key)
-    candidate={k:ruling[k] for k in ['decision','clause','damages_band','distance_ppm','policy_hash','terms_basis']}
+    candidate={k:ruling[k] for k in RULING_KEYS}
     assert direct_vm.run_validator(leader_result=candidate)
     assert not direct_vm.run_validator(leader_result={**candidate,**extra})
     assert 'recorded condition' in ruling['reason']
@@ -91,7 +92,7 @@ def test_failed_model_keeps_the_exact_funded_fee_withdrawable(direct_deploy,dire
 def test_unavailable_output_keeps_initial_funding_as_credit(direct_deploy,direct_vm,direct_alice,direct_bob,external_views):
     work,_=external_views;c=court(direct_deploy,direct_vm,direct_alice)
     direct_vm.clear_mocks();direct_vm.mock_web(r'.*',{'status':404,'body':b''})
-    with direct_vm.expect_revert('Artifact unavailable'):claim(c,work,direct_bob)
+    with direct_vm.expect_revert('Content hash changed'):c.file_claim(work['work_id'],URL,HASH,'0x'+direct_bob.hex(),1767268800,1,output_base64=encoded(b'changed'),usage_json=USAGE)
     assert c.get_account('0x'+direct_alice.hex())['credit_atto']=='100'
     assert c.get_account('0x'+direct_alice.hex())['escrow_atto']=='0'
     assert c.get_count()==0
@@ -99,10 +100,10 @@ def test_unavailable_output_keeps_initial_funding_as_credit(direct_deploy,direct
 
 def test_expired_appeal_does_not_consume_prepaid_credit(direct_deploy,direct_vm,direct_alice,direct_bob,external_views):
     work,_=external_views;c=court(direct_deploy,direct_vm,direct_alice);key=claim(c,work,direct_bob)
-    direct_vm.sender=direct_bob;fund(c,direct_vm,100);c.respond(key,accepted_used_at=1767268800,accepted_terms_version=1)
-    direct_vm.mock_llm(r'.*',json.dumps({'decision':'USE','clause':'C2','damages_band':'HIGH'}));c.rule(key)
+    direct_vm.sender=direct_bob;fund(c,direct_vm,100);c.respond(key,accepted_used_at=1767268800,accepted_terms_version=1, usage_json=USAGE)
+    direct_vm.mock_llm(r'Tithe reasoning verification.*', '{"supported":true}');direct_vm.mock_llm(r'Tithe dispute panel.*',json.dumps(panel({'decision':'USE','clause':'C2','damages_band':'HIGH'})));c.rule(key)
     fund(c,direct_vm,200);direct_vm.warp('2026-01-04T12:00:00Z')
-    with direct_vm.expect_revert('Appeal window closed'):c.appeal_claim(key,len(c.get_claim(key)['appeals'])+1,str(100*2**(len(c.get_claim(key)['appeals'])+1)))
+    with direct_vm.expect_revert('Appeal window closed'):appeal(c,direct_vm,key,len(c.get_claim(key)['appeals'])+1,str(100*2**(len(c.get_claim(key)['appeals'])+1)), grounds="Review the established use and the clause applied.")
     assert c.get_account('0x'+direct_bob.hex())['credit_atto']=='200'
     assert c.get_account('0x'+direct_bob.hex())['escrow_atto']=='200'
     assert len(c.get_claim(key)['appeals'])==0
@@ -110,12 +111,12 @@ def test_expired_appeal_does_not_consume_prepaid_credit(direct_deploy,direct_vm,
 
 def test_stale_review_quote_cannot_spend_a_larger_existing_credit(direct_deploy,direct_vm,direct_alice,direct_bob,external_views):
     work,_=external_views;c=court(direct_deploy,direct_vm,direct_alice);key=claim(c,work,direct_bob)
-    direct_vm.sender=direct_bob;fund(c,direct_vm,100);c.respond(key,accepted_used_at=1767268800,accepted_terms_version=1)
-    direct_vm.mock_llm(r'.*',json.dumps({'decision':'USE','clause':'C2','damages_band':'HIGH'}));c.rule(key)
-    fund(c,direct_vm,1000);c.appeal_claim(key,1,'200');c.rule(key)
+    direct_vm.sender=direct_bob;fund(c,direct_vm,100);c.respond(key,accepted_used_at=1767268800,accepted_terms_version=1, usage_json=USAGE)
+    direct_vm.mock_llm(r'Tithe reasoning verification.*', '{"supported":true}');direct_vm.mock_llm(r'Tithe dispute panel.*',json.dumps(panel({'decision':'USE','clause':'C2','damages_band':'HIGH'})));c.rule(key)
+    fund(c,direct_vm,1000);appeal(c,direct_vm,key,1,'200', grounds="Review the established use and the clause applied.");c.rule(key)
     before=c.get_account('0x'+direct_bob.hex())['credit_atto']
-    with direct_vm.expect_revert('Review round or bond changed'):c.appeal_claim(key,1,'200')
+    with direct_vm.expect_revert('Review round or bond changed'):appeal(c,direct_vm,key,1,'200', grounds="Review the established use and the clause applied.")
     assert c.get_account('0x'+direct_bob.hex())['credit_atto']==before=='800'
     assert len(c.get_claim(key)['appeals'])==1
-    c.appeal_claim(key,2,'400')
+    appeal(c,direct_vm,key,2,'400', grounds="Review the established use and the clause applied.")
     assert c.get_account('0x'+direct_bob.hex())['credit_atto']=='400'
