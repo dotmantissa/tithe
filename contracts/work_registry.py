@@ -64,16 +64,22 @@ def parse_answer(answer: object, allowed: tuple[str, ...], clause_count: int) ->
             raise gl.vm.UserError("[LLM_ERROR] Invalid JSON")
     if not isinstance(answer, dict):
         raise gl.vm.UserError("[LLM_ERROR] Expected a decision object")
-    decision = answer.get("decision")
-    clause = answer.get("clause")
-    reason = answer.get("reason")
-    if decision not in allowed or not isinstance(clause, str) or clause not in ["C" + str(i + 1) for i in range(clause_count)] or not isinstance(reason, str) or not 10 <= len(reason) <= 2000:
-        raise gl.vm.UserError("[LLM_ERROR] Invalid decision, clause or explanation")
-    return {"decision": decision, "clause": clause, "reason": reason}
+    decision, clause = answer.get("decision"), answer.get("clause")
+    if decision not in allowed or not isinstance(clause, str) or clause not in ["C" + str(i + 1) for i in range(clause_count)]:
+        raise gl.vm.UserError("[LLM_ERROR] Invalid decision or clause")
+    return {"decision": decision, "clause": clause}
 
 
-def numbered_terms(text: str) -> list[str]:
-    return ["C" + str(i + 1) + ": " + line for i, line in enumerate(text.splitlines()) if line.strip()]
+def canonical_decision(answer: object, allowed: tuple[str, ...], clause_count: int) -> dict:
+    if not isinstance(answer, dict) or set(answer) != {"decision", "clause"}:
+        raise gl.vm.UserError("[LLM_ERROR] Unexpected consensus fields")
+    return parse_answer(answer, allowed, clause_count)
+
+
+def explanation(decision: str, clause: str, clauses: list[str]) -> str:
+    labels = {"APPROVE": "approved the described use", "REFUSE": "refused the described use", "USE": "found use outside the terms", "NO_USE": "found no established use", "DERIVATIVE_WITHIN_TERMS": "found use within the terms"}
+    condition = clauses[int(clause[1:]) - 1][len(clause) + 2:]
+    return "The panel " + labels[decision] + " under " + clause + ". The recorded condition is: " + condition[:1200]
 
 
 @gl.evm.contract_interface
