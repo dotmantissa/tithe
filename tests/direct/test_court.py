@@ -16,7 +16,7 @@ def court(direct_deploy,direct_vm,direct_alice):
 
 
 def claim(c,work,bob):
-    return c.file_claim(work['work_id'],URL,HASH,("0x" + bob.hex()),1767268800)
+    return c.file_claim(work['work_id'],URL,HASH,("0x" + bob.hex()),1767268800, terms_version=1)
 
 
 @pytest.mark.parametrize('decision,band,creator_credit,respondent_credit',[
@@ -30,7 +30,7 @@ def test_bonds_ruling_and_settlement(direct_deploy,direct_vm,direct_alice,direct
     with direct_vm.expect_revert('Both parties'):
         c.rule(key)
     direct_vm.sender=direct_bob
-    c.respond(key)
+    c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1)
     direct_vm.mock_llm(r'Tithe dispute panel.*',json.dumps({'decision':decision,'clause':'C2','damages_band':band,'reason':'The committed output was assessed against the registered clause.'}))
     ruling=c.rule(key)
     assert ruling['distance_ppm']==0
@@ -58,11 +58,11 @@ def test_claim_access_and_response_bond(direct_deploy,direct_vm,direct_alice,dir
     key=claim(c,work,direct_bob)
     direct_vm.sender=direct_charlie
     with direct_vm.expect_revert('Only the respondent'):
-        c.respond(key)
+        c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1)
     direct_vm.sender=direct_bob
     direct_vm.value=99
     with direct_vm.expect_revert('exact response bond'):
-        c.respond(key)
+        c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1)
 
 
 def test_unanswered_claim_returns_bond_without_verdict(direct_deploy,direct_vm,direct_alice,direct_bob,external_views):
@@ -84,7 +84,7 @@ def test_rejects_someone_elses_licence(direct_deploy,direct_vm,direct_alice,dire
     licences['wrong']={'decision':'APPROVE','holder':("0x" + direct_alice.hex()),'work_id':work['work_id'],'issued_at':1,'terms_version':1}
     direct_vm.sender=direct_bob
     with direct_vm.expect_revert('does not cover'):
-        c.respond(key,'','wrong')
+        c.respond(key,'','wrong', accepted_used_at=1767268800, accepted_terms_version=1)
 
 
 def test_invalid_damages_cannot_move_money(direct_deploy,direct_vm,direct_alice,direct_bob,external_views):
@@ -92,7 +92,7 @@ def test_invalid_damages_cannot_move_money(direct_deploy,direct_vm,direct_alice,
     c=court(direct_deploy,direct_vm,direct_alice)
     key=claim(c,work,direct_bob)
     direct_vm.sender=direct_bob
-    c.respond(key)
+    c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1)
     direct_vm.mock_llm(r'.*',json.dumps({'decision':'NO_USE','clause':'C1','damages_band':'HIGH','reason':'This output does not establish use of the work.'}))
     with direct_vm.expect_revert('Invalid damages'):
         c.rule(key)
@@ -109,13 +109,13 @@ def test_bonded_appeal_preserves_history_and_conserves_funds(direct_deploy,direc
     c=court(direct_deploy,direct_vm,direct_alice)
     key=claim(c,work,direct_bob)
     direct_vm.sender=direct_bob
-    c.respond(key)
+    c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1)
     direct_vm.mock_llm(r'.*',json.dumps({'decision':'USE','clause':'C2','damages_band':'HIGH','reason':'The output uses the work outside the published terms.'}))
     c.rule(key)
     direct_vm.sender=direct_bob if appealer=='respondent' else direct_alice
     direct_vm.value=200
     c.appeal_claim(key)
-    assert c.get_claim(key)['status']=='READY'
+    assert c.get_claim(key)['status']=='REVIEW_PENDING'
     assert c.get_claim(key)['appeals'][0]['previous_ruling']['decision']=='USE'
     assert c.get_account(('0x'+direct_bob.hex()))['escrow_atto']=='400'
     with direct_vm.expect_revert('open to network appeal'):
@@ -137,7 +137,7 @@ def test_appeal_access_fee_and_deadline(direct_deploy,direct_vm,direct_alice,dir
     c=court(direct_deploy,direct_vm,direct_alice)
     key=claim(c,work,direct_bob)
     direct_vm.sender=direct_bob
-    c.respond(key)
+    c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1)
     direct_vm.mock_llm(r'.*',json.dumps({'decision':'USE','clause':'C2','damages_band':'LOW','reason':'The output omitted the required creator attribution.'}))
     c.rule(key)
     direct_vm.sender=direct_charlie
@@ -158,7 +158,7 @@ def test_distance_tolerance_boundaries(direct_deploy,direct_vm,direct_alice,left
     import sys
     c=court(direct_deploy,direct_vm,direct_alice)
     compare=sys.modules[c.__module__].same_ruling
-    record={'decision':'USE','clause':'C1','damages_band':'LOW','policy_hash':'','distance_ppm':left}
+    record={'decision':'USE','clause':'C1','damages_band':'LOW','policy_hash':'','terms_basis':'USE_TERMS','distance_ppm':left}
     assert compare(record,{**record,'distance_ppm':right}) is agrees
     assert compare({**record,'distance_ppm':right},record) is agrees
     assert not compare(record,{**record,'policy_hash':'changed','distance_ppm':right})

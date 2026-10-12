@@ -37,12 +37,9 @@ def test_court_refuses_animated_output(direct_deploy,direct_vm,direct_alice,dire
     from conftest import SOURCE
     direct_vm.mock_web(r'https://example.org/orchard.txt',{'status':200,'body':SOURCE})
     direct_vm.mock_web(r'https://example.org/animated.png',{'status':200,'body':raw})
-    key=c.file_claim(work['work_id'],output,hashlib.sha256(raw).hexdigest(),'0x'+direct_bob.hex(),1767268800)
-    direct_vm.sender=direct_bob
-    c.respond(key)
     with direct_vm.expect_revert('Animated images'):
-        c.rule(key)
-    assert c.get_claim(key)['status']=='READY'
+        c.file_claim(work['work_id'],output,hashlib.sha256(raw).hexdigest(),'0x'+direct_bob.hex(),1767268800,terms_version=1)
+    assert c.get_count()==0
 
 
 def image_evidence(direct_vm,work):
@@ -75,9 +72,9 @@ def test_court_image_signature_is_reproducible(direct_deploy,direct_vm,direct_al
     work,_=external_views
     raw=image_evidence(direct_vm,work)
     c=court(direct_deploy,direct_vm,direct_alice)
-    key=c.file_claim(work['work_id'],URL,work['content_hash'],'0x'+direct_bob.hex(),1767268800)
+    key=c.file_claim(work['work_id'],URL,work['content_hash'],'0x'+direct_bob.hex(),1767268800, terms_version=1)
     direct_vm.sender=direct_bob
-    c.respond(key)
+    c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1)
     from genlayer import gl
     seen=[]
     def assess(prompt,*,images,response_format):

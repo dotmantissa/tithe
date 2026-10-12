@@ -25,7 +25,7 @@ def external_views(monkeypatch, direct_deploy, direct_vm, direct_alice, evidence
     historic = registry.get_terms_at(work_id, 1767268800)
     from genlayer import gl
     licence_box = {}
-    view = SimpleNamespace(get_work=lambda _: work, get_terms=lambda *args: work['terms'], get_terms_at=lambda *args: historic, get_licence=lambda key: licence_box[key])
+    view = SimpleNamespace(get_work=lambda _: work, get_terms=lambda *args: work['terms'], get_terms_at=lambda *args: {"version": args[2] if len(args) > 2 and args[2] else historic["version"], "terms": work["terms"]}, get_licence=lambda key: licence_box[key])
     monkeypatch.setattr(gl, 'get_contract_at', lambda address: SimpleNamespace(view=lambda: view))
     # Separate storage for a new target contract. Cross-contract wiring is
     # exercised with live network calls in tests/integration.

@@ -137,9 +137,12 @@ class LicenceDesk(gl.Contract):
     credits: TreeMap[Address, u256]
     paid: TreeMap[str, bool]
     total_escrow: u256
+    escrow_seconds: u256
 
-    def __init__(self, registry: str):
+    def __init__(self, registry: str, escrow_seconds: int = 86400):
+        require(1 <= escrow_seconds <= 31536000, "Invalid escrow duration")
         self.registry = Address(registry)
+        self.escrow_seconds = u256(escrow_seconds)
 
     @gl.public.write.payable
     def request_licence(self, work_id: str, intended_use_text: str, use_class: str = "commercial", expected_terms_version: int = 0, expected_fee_atto: str = "") -> str:
@@ -166,7 +169,7 @@ class LicenceDesk(gl.Contract):
             return proposed == assess()
         ruling = canonical_decision(gl.vm.run_nondet_unsafe(assess, validator), ("APPROVE", "REFUSE"), len(terms["clauses"]))
         licence_id = hashlib.sha256((gl.message.sender_address.as_hex + ":" + str(len(self.licence_ids))).encode()).hexdigest()
-        record = {"licence_id": licence_id, "work_id": work_id, "holder": gl.message.sender_address.as_hex, "creator": work["creator"], "terms_version": work["version"], "use_class": use_class, "intended_use": intended_use_text, "fee_atto": str(fee), "issued_at": now(), "release_at": now() + 86400, "decision": ruling["decision"], "clause": ruling["clause"], "reason": explanation(ruling["decision"], ruling["clause"], terms["clauses"])}
+        record = {"licence_id": licence_id, "work_id": work_id, "holder": gl.message.sender_address.as_hex, "creator": work["creator"], "terms_version": work["version"], "use_class": use_class, "intended_use": intended_use_text, "fee_atto": str(fee), "issued_at": now(), "release_at": now() + int(self.escrow_seconds), "decision": ruling["decision"], "clause": ruling["clause"], "reason": explanation(ruling["decision"], ruling["clause"], terms["clauses"])}
         self.licences[licence_id] = json.dumps(record, sort_keys=True)
         self.licence_ids.append(licence_id)
         self.paid[licence_id] = False
@@ -219,3 +222,7 @@ class LicenceDesk(gl.Contract):
     @gl.public.view
     def get_count(self) -> int:
         return len(self.licence_ids)
+
+    @gl.public.view
+    def get_config(self) -> dict:
+        return {"registry": self.registry.as_hex, "escrow_seconds": int(self.escrow_seconds)}

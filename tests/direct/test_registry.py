@@ -64,3 +64,15 @@ def test_still_image_registration(direct_vm,direct_deploy):
     contract=direct_deploy('contracts/work_registry.py')
     key=contract.register_work(URL,hashlib.sha256(raw).hexdigest(),TERMS,PRICES,'commercial')
     assert contract.get_work(key)['kind']=='image'
+
+
+def test_same_second_terms_need_stable_explicit_version(direct_vm,direct_deploy,direct_alice,evidence):
+    c=direct_deploy('contracts/work_registry.py');direct_vm.sender=direct_alice
+    key=c.register_work(URL,HASH,TERMS,PRICES,'commercial')
+    timestamp=c.get_work(key)['registered_at']
+    c.update_terms(key,'All commercial use is prohibited.',PRICES,'commercial')
+    with direct_vm.expect_revert('multiple terms versions'):c.get_terms_at(key,timestamp)
+    assert c.get_terms_at(key,timestamp,1)['terms']['terms_text']==TERMS
+    assert c.get_terms_at(key,timestamp,2)['version']==2
+    assert len(c.get_terms_versions_at(key,timestamp))==2
+    with direct_vm.expect_revert('not in force'):c.get_terms_at(key,timestamp,3)

@@ -192,6 +192,7 @@ class WorkRegistry(gl.Contract):
         require(work.creator == gl.message.sender_address, "Only the creator may change terms")
         require(work.version < 128, "Terms version limit reached")
         terms = self._terms(terms_text, price_schedule_atto, licence_class)
+        require(terms["effective_at"] >= self.get_terms(work_id, int(work.version))["effective_at"], "Terms timestamps cannot move backwards")
         work.version = u256(work.version + 1)
         self.versions[work_id + ":" + str(work.version)] = json.dumps(terms, sort_keys=True)
         return int(work.version)
@@ -209,14 +210,32 @@ class WorkRegistry(gl.Contract):
         return json.loads(self.versions[key])
 
     @gl.public.view
-    def get_terms_at(self, work_id: str, used_at: int) -> dict:
-        require(work_id in self.works and used_at <= now(), "Invalid work or use time")
-        work = self.works[work_id]
-        for version in range(int(work.version), 0, -1):
+    def get_terms_versions_at(self, work_id: str, used_at: int) -> list[dict]:
+        require(work_id in self.works and 0 < used_at <= now(), "Invalid work or use time")
+        matching = []
+        effective = -1
+        for version in range(int(self.works[work_id].version), 0, -1):
             terms = self.get_terms(work_id, version)
             if terms["effective_at"] <= used_at:
-                return {"version": version, "terms": terms}
-        raise gl.vm.UserError("[EXPECTED] Use predates registration")
+                if effective < 0:
+                    effective = terms["effective_at"]
+                if terms["effective_at"] == effective:
+                    matching.append({"version": version, "terms": terms})
+                else:
+                    break
+        require(len(matching) > 0, "Use predates registration")
+        return matching
+
+    @gl.public.view
+    def get_terms_at(self, work_id: str, used_at: int, version: int = 0) -> dict:
+        matches = self.get_terms_versions_at(work_id, used_at)
+        if version:
+            for match in matches:
+                if match["version"] == version:
+                    return match
+            raise gl.vm.UserError("[EXPECTED] Terms version was not in force at the proposed time")
+        require(len(matches) == 1, "This timestamp has multiple terms versions; agree an explicit version")
+        return matches[0]
 
     @gl.public.view
     def list_works(self, offset: int = 0, limit: int = 20) -> list[dict]:

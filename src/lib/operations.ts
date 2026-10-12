@@ -38,11 +38,12 @@ export async function submit(subject: string, action: Action, idempotency: strin
     case 'claim': {
       const artifact=await inspectArtifact(action.output_url);
       if(artifact.content_hash!==action.output_hash) throw new AppError('The output changed after preview. Fetch it again.');
-      contract='court';method='file_claim';args=[action.work_id,action.output_url,action.output_hash,action.respondent,action.used_at];
+      contract='court';method='file_claim';args=[action.work_id,action.output_url,action.output_hash,action.respondent,action.used_at,action.terms_version];
       value=BigInt((await read<{bond_atto:string}>('court','get_account',[accountFor(subject).address])).bond_atto);break;
     }
-    case 'respond': contract='court';method='respond';args=[action.claim_id,action.policy_url,action.licence_id];value=BigInt((await read<{bond_atto:string}>('court','get_account',[accountFor(subject).address])).bond_atto);break;
-    case 'rule':case 'settle':case 'cancel': contract='court';method=action.kind==='cancel'?'cancel_unanswered':action.kind;args=[action.claim_id];break;
+    case 'respond': contract='court';method='respond';args=[action.claim_id,action.policy_url,action.licence_id,action.accepted_used_at,action.accepted_terms_version,action.policy_hash];value=BigInt((await read<{bond_atto:string}>('court','get_account',[accountFor(subject).address])).bond_atto);break;
+    case 'propose_time':case 'accept_time':contract='court';method=action.kind==='propose_time'?'propose_use_time':'accept_use_time';args=[action.claim_id,action.used_at,action.terms_version];break;
+    case 'rule':case 'settle':case 'cancel':case 'recover': contract='court';method=action.kind==='cancel'?'cancel_unanswered':action.kind==='recover'?'recover_hearing':action.kind;args=[action.claim_id];break;
     case 'release':contract='desk';method='release_fee';args=[action.licence_id];break;
     case 'withdraw':contract=action.contract;method='withdraw';break;
     case 'appeal': {

@@ -42,10 +42,10 @@ def test_court_rejects_malformed_and_unbound_leader_fields(direct_deploy,direct_
     c=court(direct_deploy,direct_vm,direct_alice)
     key=claim(c,work,direct_bob)
     direct_vm.sender=direct_bob
-    c.respond(key)
+    c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1)
     direct_vm.mock_llm(r'Tithe dispute panel.*',json.dumps({'decision':'USE','clause':'C2','damages_band':'LOW'}))
     ruling=c.rule(key)
-    candidate={k:ruling[k] for k in ['decision','clause','damages_band','distance_ppm','policy_hash']}
+    candidate={k:ruling[k] for k in ['decision','clause','damages_band','distance_ppm','policy_hash','terms_basis']}
     assert direct_vm.run_validator(leader_result=candidate)
     assert not direct_vm.run_validator(leader_result={**candidate,**extra})
     assert 'recorded condition' in ruling['reason']
