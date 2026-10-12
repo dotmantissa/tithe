@@ -1,94 +1,310 @@
 {
+  "actor_run": "v6",
+  "verification_run": "v7",
   "source_hashes": {
-    "registry": "d6240a8afef50203d4276ec60fb9476ca1fdfcd345045c95dd3e220a0521be5b",
-    "desk": "3d20dc2d32ef3c6d666f4adde3841e0cdaa9a4583b2f96353ebea1005146bf79",
-    "court": "bd9ca859356cfe206279a85e76c6f8d612899e130cbed36da9521748333c41c7"
+    "registry": "7529008cb7888bbd87d2cfd657e3e1c35922fe6350316390d9149082f4f8e269",
+    "desk": "70b75ed801a1aa5c9dacadf4e3da42fa4ba782da476161158b8e68fa85a5038b",
+    "court": "375a88a30f47c15a4757ed7827506e379619e26fdc9343ef352ce8e638e24ff8"
   },
   "network": "GenLayer Studio",
-  "checked_at": "2026-10-11T20:44:18.313Z",
+  "checked_at": "2026-10-12T11:11:28.967Z",
   "isolated_contracts": {
-    "registry": "0x9A718F4BbA2997793C0A193b75c5f840334C6bE5",
-    "desk": "0xB1f87B12FF138B8Ac9727fc856D4490f9Aad390C",
-    "court": "0x50e0E5957d2c4E4Bb4eAF9a76F19AD1C54a9a4ae"
+    "registry": "0x8E7f78Fc7e2176E20Dc6fad177b2C99aCdb59216",
+    "desk": "0x83876950D5C53cB4e35b07A7a20Ad7b01fc463f3",
+    "court": "0x78e15dfA41Dc7675eb429F36cdf43290b794560B"
   },
   "checks": {
     "deploy:registry": {
-      "hash": "0x828b482d8fa489d6d896ed50afbb06f5d73fcb5c3aa0533b2fc4c77ab88c2a25",
-      "status": 7,
+      "hash": "0x4b4887cc648e80a8d7d7113907678206a0965facbf3249bf11c6a3e9a1e8a041",
+      "status": 5,
       "execution": "succeeded"
     },
     "deploy:desk": {
-      "hash": "0x1746e73ccb8e4f3ced8aa0b12f7ce5c2b67dcbab8f8af36584d0f95e07f18c72",
+      "hash": "0x394c7834a58716760756ef03d04aad626924486777d2c1dafe7291ed0bb13c8b",
+      "status": 5,
+      "execution": "succeeded"
+    },
+    "register:text": {
+      "hash": "0xd456f951e9685c7eb6d7acbb46b0e0685ae3a95c9f32270fa274b73408d4a321",
+      "status": 5,
+      "execution": "succeeded"
+    },
+    "approve:paid:fund": {
+      "hash": "0xee5526029822c07a3908ae0dcb55b11b25e78dcac371e40413f563445a3f826d",
       "status": 7,
       "execution": "succeeded"
+    },
+    "approve:paid": {
+      "hash": "0xf7d9aff7f248af7b1a0ec9e1be9deec1f08e0f799231886b9f449632bf14e883",
+      "status": 5,
+      "execution": "succeeded"
+    },
+    "release:paid": {
+      "hash": "0x153624e70352edbbd66f6954a698d638ba76e9ca4dcb67699486fddc250147e5",
+      "status": 5,
+      "execution": "succeeded"
+    },
+    "withdraw:paid": {
+      "hash": "0xb1e28335ce6b5684947438424061eff9e9ac11c952dad94ae16deb3ac00f1f79",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "withdraw:paid:balance": {
+      "received_atto": "100"
+    },
+    "failed-action:fund": {
+      "hash": "0x3b42d3797057fb36b6f0692d18df32ae70c41605ea08e1ec4c39840817d25083",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "failed-action:withdraw": {
+      "hash": "0x55c35a97c450937ca643d9fa3f8da63176ecf3a851cab94fb1c7142cff089f1b",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "failed-action": {
+      "hash": "0xddcefffca5c56472ac57a17d4f030ac09a2226f19d53a13073015499984ef215",
+      "status": "FINALIZED",
+      "execution": "expected rollback with zero attached value"
+    },
+    "failed-action:balance": {
+      "recovered_atto": "100"
+    },
+    "terms:prohibit": {
+      "hash": "0xfed0788b0583017fe25d59b916117e37d819974eedf8d1d17f2efacdbcd12f65",
+      "status": 5,
+      "execution": "succeeded"
+    },
+    "refuse:paid:fund": {
+      "hash": "0xb4a9ca1d084d03918529d4c2dde7e97459e5fffd8a673c9d71f1e49fded9e14e",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "refuse:paid": {
+      "hash": "0xc2f4996c9b8b9bc3ff17d501843da23b34d8a40b9992d68bccd3e101ccf4c65b",
+      "status": 5,
+      "execution": "succeeded"
+    },
+    "withdraw:refused": {
+      "hash": "0x66e8664f1d986adc2150927ed7a1315b720b08c8ca2fdbb9ecb3b461a320a708",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "withdraw:refused:balance": {
+      "received_atto": "100"
     },
     "deploy:court": {
-      "hash": "0x59a5ba60f20308510e1b765c3c3808c0232d9b60b465296194450073174fc444",
-      "status": 7,
-      "execution": "succeeded"
-    },
-    "register": {
-      "hash": "0x56f90e172a22d42443a8d711369be14a6e75aee3bf1d421bed7f2c00be723c78",
-      "status": 7,
-      "execution": "succeeded"
-    },
-    "approve": {
-      "hash": "0xc0f298d2bb21f9eb1061962ae7d656adf5f864cdb1954b4898734161807cb088",
-      "status": 7,
-      "execution": "succeeded"
-    },
-    "claim": {
-      "hash": "0x05a57dc5d85b6383ba27960c1bf1fdaabcc2ab1048de9600e2f5528c646873dc",
-      "status": 7,
-      "execution": "succeeded"
-    },
-    "respond": {
-      "hash": "0xfe24ece9d1c8c0a605cb6417a937104668b4f5ce65055aef3c6bb4c629e7481f",
-      "status": 7,
-      "execution": "succeeded"
-    },
-    "rule": {
-      "hash": "0xa5436d849aaf2378977ae16bea015953eaeb24cb501b74061bdbfe6571ecd03b",
-      "status": 7,
-      "execution": "succeeded"
-    },
-    "appeal": {
-      "hash": "0x3744c1fa9f7cb144885dd4d925705af6e5f2711adbf79f183d272cada8a4e231",
-      "status": 7,
-      "execution": "succeeded"
-    },
-    "review": {
-      "hash": "0x4f66816ec6496cd9ee93ec31f0c1de20e993f2142d74a16f04cab4aa472ab6d3",
-      "status": 7,
-      "execution": "succeeded"
-    },
-    "terms": {
-      "hash": "0xa8eca6bc1f7965692e9acc8ba656de1f7f74d8894067f89ef94e9a788516621b",
+      "hash": "0x77412f8ec4998f4151d0e31de76d73771213345d0ea40869d5fd782ef03efa6e",
       "status": 5,
       "execution": "succeeded"
     },
-    "refuse": {
-      "hash": "0xd0010f5408c67b429807f1651b231f2c623e2d112f427ac3c5bc6a5ae3e4172a",
+    "claim:distinct:fund": {
+      "hash": "0xb35859228e668533d63838442f062c4eaff4b70fe1ff67cc2a8d0c82238f7373",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "claim:distinct": {
+      "hash": "0xffdcbc2545783ade7eda314fdcf76e3d835be96b927676dfe0fda08dce49a8eb",
       "status": 5,
       "execution": "succeeded"
     },
-    "withdraw": {
-      "hash": "0xf7c7d5809d57b4f6333b4cb69d5c328ffb424ab59b92f893c61c1d6a4874f3a6",
+    "respond:distinct:fund": {
+      "hash": "0x0126d2c2bde5ed0a1a7b9b3c21eb4b459899f6fd18cfc38bcdebad73777a8ba7",
       "status": 7,
       "execution": "succeeded"
+    },
+    "respond:distinct": {
+      "hash": "0xe488a14d76eb5c46f25748d46aa7c434f9ed2ada665e5315687091a64fbb9e47",
+      "status": 5,
+      "execution": "succeeded"
+    },
+    "rule:distinct": {
+      "hash": "0x188daf2c30f7c81822934eaea1bf882c4a31cf573a223663d8418977e7914135",
+      "status": 5,
+      "execution": "succeeded"
+    },
+    "appeal:distinct:fund": {
+      "hash": "0xd46d7bd47c47628c3e67c86db4434f555575bc14233511a00b8eb739414c9a73",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "appeal:distinct": {
+      "hash": "0x825864125a2ec014c273efd0dbd95eb82d4d181dfb14f343fca7455e9e917c3d",
+      "status": 5,
+      "execution": "succeeded"
+    },
+    "review:distinct": {
+      "hash": "0xad8c0e36afc51d2f23d5826fcf4c1128302a8d860450674d0e47d20344aba7d0",
+      "status": 5,
+      "execution": "succeeded"
+    },
+    "claim:grant:fund": {
+      "hash": "0x8180682e5da13332f97366043e1031445603e43e027d0edb98af4c6e11119796",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "claim:grant": {
+      "hash": "0xd6c9f9190e222beed26d9e5c32d795c3c601c82421aa15c9e3c8b9bdb9075190",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "respond:grant:fund": {
+      "hash": "0x645728b95424b611ea2c1eb221dee730e0979c0cc509cf6fb0126f46bd76d8b1",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "respond:grant": {
+      "hash": "0x9dc10ec53ea60b3a45bafd8f5a3e1ad232e3f657e12c77cce558860034e1d139",
+      "status": 5,
+      "execution": "succeeded"
+    },
+    "rule:grant": {
+      "hash": "0x7a965e7b6578a0c04a853d54abdf4dd59bc59d2c69d3496f2ab620ff1ee262e8",
+      "status": 5,
+      "execution": "succeeded"
+    },
+    "register:image": {
+      "hash": "0x1bbcf278ac752e786a40ee5ea721359d2e6bc0ae08dd3c146ffe600b13e473ad",
+      "status": 5,
+      "execution": "succeeded"
+    },
+    "approve:image": {
+      "hash": "0xf30845787f7e26ceb399a9237078a8d95c7ce2dffaa52f86cae96dc62e91e2c4",
+      "status": 5,
+      "execution": "succeeded"
+    },
+    "claim:image:fund": {
+      "hash": "0x65c5c7f30c00b80b7c147457e850fbd810dfe2b8467b6d201f4181f9670e883f",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "claim:image": {
+      "hash": "0x70173fd3cf19b59117108cce70b4791ea4db6001e8709d870eb4bf996e84e9dc",
+      "status": 5,
+      "execution": "succeeded"
+    },
+    "respond:image:fund": {
+      "hash": "0x81c1d694c0b43dd5ad795925d1fd1b5ba17f6f7ac131e712a75edff11d36854a",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "respond:image": {
+      "hash": "0x385d455ce771f84ec0b116e14ee2586f275a272f6b40fff7e8d1d17d669455bd",
+      "status": 5,
+      "execution": "succeeded"
+    },
+    "rule:image": {
+      "hash": "0x7935ce38533a864c90b7d9c6d95b846ebde8e605b1293c54ac5c6ee764c15a20",
+      "status": 5,
+      "execution": "succeeded"
+    },
+    "claim:prohibited:fund": {
+      "hash": "0xada81f0114b6ff861a18cc1e69a04ab6164c3e81672fbb4da6669c1913acd525",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "claim:prohibited": {
+      "hash": "0x2692d4e65e7d335ef6d5f17effcfe54a33dddac2f671b30665b4567735110229",
+      "status": 5,
+      "execution": "succeeded"
+    },
+    "respond:prohibited:fund": {
+      "hash": "0x218dbf8c770f96dd4ca1d678af2ccdbba01a55e91ae72e71d4b4b4124b189da7",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "respond:prohibited": {
+      "hash": "0xedf9b94ba3e4103520d46fca88e9f3166f3a3b82fb83f11a64be5a26dbc25914",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "rule:prohibited": {
+      "hash": "0x8e19293a96233513c6df7a7d1c3f90ffb368fb28ada7f3ba9b0ccabc5a953543",
+      "status": 5,
+      "execution": "succeeded"
+    },
+    "settle:6e4a3e704649d6b6069ff372fd9a59050b3189271efca1c3596ee18872c5f835": {
+      "hash": "0x17c32ff397f2bfe03308261d00583d61f0dc6acaf3017c2b47b6a922cb1fad99",
+      "status": 5,
+      "execution": "succeeded"
+    },
+    "settle:fe208c155c5820e05b347075820f99fcb3c199184e59b392f0bea9bf68453082": {
+      "hash": "0x147009de64aac26e7d6e98ec11fab1faa6334f788d02d63bef77c0d86e127b92",
+      "status": 5,
+      "execution": "succeeded"
+    },
+    "settle:fda4398cfbfe4909382369b82b2888cd87587b3e7a107740b0e384190626e43b": {
+      "hash": "0xc767d631ad0123e4bc754e20447f7a280495d5e587d02a4867610434023ff4fd",
+      "status": 5,
+      "execution": "succeeded"
+    },
+    "settle:1796cabd728975a739d15e205accb4e0a2b6061735809b3bacc55e43fe2bcf56": {
+      "hash": "0x8203eb5cf690976c1dee03d2a3e6f81b6cd14301e02dd60b3d8576538336af70",
+      "status": 5,
+      "execution": "succeeded"
+    },
+    "withdraw:court:creator": {
+      "hash": "0x841a8a138a043c1aa84a5337673dc0aca182dd288a0498aad27e9b4586310c51",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "withdraw:court:creator:balance": {
+      "received_atto": "500"
+    },
+    "withdraw:court:lab": {
+      "hash": "0x284efce97dc053719fa7329dead452d64b842a9237c1ca5abed12de9f32880c7",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "withdraw:court:lab:balance": {
+      "received_atto": "500"
     }
   },
-  "ruling": {
+  "nonidentical_text_ruling": {
+    "clause": "C1",
+    "damages_band": "NONE",
+    "decision": "DERIVATIVE_WITHIN_TERMS",
+    "distance_ppm": 344116,
+    "policy_hash": "",
+    "reason": "The panel found use within the terms under C1. The recorded condition is: Research and commercial copying of all or part of this work are permitted without attribution. Commercial use requires the published commercial fee. Research use is free.",
+    "terms_basis": "USE_TERMS",
+    "terms_version": 1
+  },
+  "image_ruling": {
     "clause": "C1",
     "damages_band": "NONE",
     "decision": "DERIVATIVE_WITHIN_TERMS",
     "distance_ppm": 0,
     "policy_hash": "",
-    "reason": "The licence explicitly grants permission under clause C1 for research, quotation, copying and commercial use of the registered example without requiring attribution. The intended use is to quote the entire example in an internal research study, which falls squarely within the permitted activities. Consequently, the use complies with the licence terms and no damages are applicable."
+    "reason": "The panel found use within the terms under C1. The recorded condition is: All copying and derivative uses of this image are permitted without attribution.",
+    "terms_basis": "USE_TERMS",
+    "terms_version": 1
+  },
+  "durable_grant_ruling": {
+    "clause": "C1",
+    "damages_band": "NONE",
+    "decision": "DERIVATIVE_WITHIN_TERMS",
+    "distance_ppm": 0,
+    "policy_hash": "",
+    "reason": "The panel found use within the terms under C1. The recorded condition is: Research and commercial copying of all or part of this work are permitted without attribution. Commercial use requires the published commercial fee. Research use is free.",
+    "terms_basis": "LICENCE_TERMS",
+    "terms_version": 1
+  },
+  "prohibited_ruling": {
+    "clause": "C1",
+    "damages_band": "HIGH",
+    "decision": "USE",
+    "distance_ppm": 0,
+    "policy_hash": "",
+    "reason": "The panel found use outside the terms under C1. The recorded condition is: All copying, quotation and commercial use of this work are prohibited. Refuse every request to copy this work.",
+    "terms_basis": "USE_TERMS",
+    "terms_version": 2
   },
   "notes": [
-    "All web and model calls ran on the real network.",
-    "No sample work was registered in the application contracts.",
-    "Time gated settlement is covered by direct tests; live settlement waits two days."
+    "Real public evidence, live independent model consensus and ONNX embeddings.",
+    "Isolated contracts use 10 second fee escrow and 1200 second appeals; application uses one day and two days.",
+    "Native funding is credited before adjudication; an intentionally reverted zero-value action retained credit and its full native withdrawal was verified.",
+    "All isolated court funds settled and withdrawn with exact native balance checks.",
+    "No sample works or licences registered in application contracts."
   ]
 }

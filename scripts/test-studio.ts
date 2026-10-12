@@ -18,7 +18,8 @@ const statePath='.secrets/studio-test-state'+(run==='v1'?'':'-'+run)+'.json';
 let state:State;
 try {state=JSON.parse(await readFile(statePath,'utf8'));}catch{state={contracts:{},transactions:{},signed:{},results:{}};}
 async function save(){await writeFile(statePath+'.tmp',JSON.stringify(state,null,2)+'\n',{mode:0o600});await rename(statePath+'.tmp',statePath);}
-const creator=accountFor('tithe:integration:creator:'+run),lab=accountFor('tithe:integration:lab:'+run);
+const actorRun=process.env.STUDIO_TEST_ACTOR_RUN||run;if(!/^[a-zA-Z0-9_]{1,40}$/.test(actorRun))throw new Error('Invalid actor run');
+const creator=accountFor('tithe:integration:creator:'+actorRun),lab=accountFor('tithe:integration:lab:'+actorRun);
 class SavedForBroadcast extends Error {}
 function clientFor(who:typeof creator,operation:string){
   const sign=who.signTransaction;
@@ -30,17 +31,34 @@ async function stage(operation:string,submit:()=>Promise<unknown>){
  try{await submit();}catch(error){if(!(error instanceof SavedForBroadcast))throw error;}
  assert.ok(state.signed[operation]);await reader.sendRawTransaction({serializedTransaction:state.signed[operation]});
 }
+// A broadcast can be accepted and still leave no transaction record. Resume by
+// sending the exact saved bytes again, never by signing a replacement. A
+// transaction that already landed simply rejects the duplicate.
+async function replay(operation:string){
+ if(!state.signed[operation]||state.results[operation])return;
+ try{await reader.sendRawTransaction({serializedTransaction:state.signed[operation]});}catch{}
+}
 const reader=createClient({chain:studionet});
 async function retry<T>(action:()=>Promise<T>):Promise<T>{for(let attempt=0;;attempt++){try{return await action();}catch{if(attempt>=5)throw new Error('A real service is temporarily unavailable. Resume the saved integration run.');await new Promise(resolve=>setTimeout(resolve,5000));}}}
 async function baseline(operation:string,address:`0x${string}`){state.baselines||={};if(!state.baselines[operation]){state.baselines[operation]=(await balance(address)).toString();await save();}return BigInt(state.baselines[operation]);}
 const balance=(address:`0x${string}`)=>retry(()=>reader.getBalance({address}));
+// Studio can leave a broadcast transaction invisible for minutes, which the
+// client reports as a hard not-found rather than as pending. Keep waiting
+// within a bounded deadline, and replay the exact saved bytes once in case the
+// broadcast itself was refused, before treating the wait as a real failure.
 async function receipt(operation:string,final=false){
   const hash=state.transactions[operation];
   assert.ok(hash,operation+' has a persisted transaction');
-  let tx;
-  for(let attempt=0;attempt<6;attempt++) {
-    try{tx=await reader.waitForTransactionReceipt({hash,status:final?TransactionStatus.FINALIZED:TransactionStatus.ACCEPTED,interval:10000,retries:90});break;}
-    catch(error){if(attempt===5)throw error;console.log(operation+': reconnecting to Studio');await new Promise(resolve=>setTimeout(resolve,5000));}
+  const deadline=Date.now()+900000;let replayed=false,tx;
+  for(let attempt=0;;attempt++) {
+    try{tx=await reader.waitForTransactionReceipt({hash,status:final?TransactionStatus.FINALIZED:TransactionStatus.ACCEPTED,interval:15000,retries:80});break;}
+    catch(error){
+      if(Date.now()>deadline)throw error;
+      const missing=/not found/i.test(String((error as Error).message));
+      if(missing&&!replayed&&attempt>=2){replayed=true;await replay(operation);}
+      console.log(operation+(missing?': not yet visible, waiting':': reconnecting to Studio'));
+      await new Promise(resolve=>setTimeout(resolve,missing?20000:5000));
+    }
   }
   assert.ok(tx);
   if(!executionSucceeded(tx)){
@@ -68,13 +86,14 @@ async function call<T>(name:string,method:string,args:CalldataEncodable[]=[]){re
 async function write(operation:string,who:typeof creator,name:string,method:string,args:CalldataEncodable[]=[],value=0n){
  if(state.results[operation])return;
  if(value>0n){
-  const funding=operation+':fund';if(state.transactions[funding]&&!state.results[funding])await receipt(funding,true);
+  const funding=operation+':fund';if(state.transactions[funding]&&!state.results[funding]){await replay(funding);await receipt(funding,true);}
   const credit=await call<{credit_atto:string}>(name,'get_account',[who.address]);
   const shortfall=value-BigInt(credit.credit_atto);
   if(shortfall>0n){const funding=operation+':fund';if(!state.transactions[funding])await stage(funding,async()=>clientFor(who,funding).writeContract({address:state.contracts[name],functionName:'fund_credit',args:[],value:shortfall}));await receipt(funding,true);}
  }
- if(!state.transactions[operation]){console.log('Submitting '+operation);await stage(operation,async()=>clientFor(who,operation).writeContract({address:state.contracts[name],functionName:method,args,value:0n}));}
- if(state.signed[operation]){try{await retry(()=>reader.getTransaction({hash:state.transactions[operation]}));}catch{await reader.sendRawTransaction({serializedTransaction:state.signed[operation]});}}
+ let justBroadcast=false;
+ if(!state.transactions[operation]){console.log('Submitting '+operation);await stage(operation,async()=>clientFor(who,operation).writeContract({address:state.contracts[name],functionName:method,args,value:0n}));justBroadcast=true;}
+ if(!justBroadcast)await replay(operation);
  return receipt(operation);
 }
 for(const account of [creator,lab]){
@@ -97,15 +116,18 @@ await write('register:text',creator,'registry','register_work',[text.url,text.ha
 let works=await call<Work[]>('registry','list_works',[0,50]);const work=works.find(w=>w.content_hash===text.hash)!;assert.ok(work);
 await write('approve:paid',lab,'desk','request_licence',[work.work_id,'Commercial copying of the entire published work in a paid product.','commercial',1,'100','studio-paid-approval-'+run],100n);
 let licences=await call<Licence[]>('desk','list_licences',[0,50]);const paid=licences.find(l=>l.intended_use.startsWith('Commercial copying'))!;assert.equal(paid.decision,'APPROVE');
-async function waitUntil(epoch:number){for(;;){const clock=await call<{unix_seconds:number}>('registry','get_clock');if(clock.unix_seconds>=epoch)return;await new Promise(resolve=>setTimeout(resolve,Math.min(30000,(epoch-clock.unix_seconds)*1000+100)));}}
+// Settlement windows are minutes long, so sleep most of the remaining time in
+// one go. Polling the network clock every few seconds would spend the shared
+// provider budget on waiting rather than on the checks themselves.
+async function waitUntil(epoch:number){for(;;){const clock=await call<{unix_seconds:number}>('registry','get_clock');if(clock.unix_seconds>=epoch)return;await new Promise(resolve=>setTimeout(resolve,Math.min(300000,(epoch-clock.unix_seconds)*1000+1000)));}}
 await waitUntil(paid.release_at);
 await write('release:paid',creator,'desk','release_fee',[paid.licence_id]);
 if(!state.transactions['withdraw:paid'])assert.equal((await call<{credit_atto:string}>('desk','get_account',[creator.address])).credit_atto,'100');
 if(!state.results['withdraw:paid:balance']){const before=await baseline('withdraw:paid',creator.address);await write('withdraw:paid',creator,'desk','withdraw');await receipt('withdraw:paid',true);const after=await balance(creator.address);assert.equal(after-before,100n);state.results['withdraw:paid:balance']={received_atto:'100'};await save();}
 if(!state.results['failed-action:balance']){
- const funding='failed-action:fund';if(!state.transactions[funding])await stage(funding,async()=>clientFor(lab,funding).writeContract({address:desk,functionName:'fund_credit',args:[],value:100n}));await receipt(funding,true);
- const failure='failed-action';if(!state.transactions[failure])await stage(failure,async()=>clientFor(lab,failure).writeContract({address:desk,functionName:'request_licence',args:[work.work_id,'Commercial copying with an intentionally stale consent version.','commercial',99,'100','studio-failure-safety-'+run],value:0n}));
- const tx=await reader.waitForTransactionReceipt({hash:state.transactions[failure],status:TransactionStatus.FINALIZED,interval:10000,retries:90});assert.equal(executionSucceeded(tx),false);
+ const funding='failed-action:fund';if(!state.transactions[funding])await stage(funding,async()=>clientFor(lab,funding).writeContract({address:desk,functionName:'fund_credit',args:[],value:100n}));else await replay(funding);await receipt(funding,true);
+ const failure='failed-action';if(!state.transactions[failure])await stage(failure,async()=>clientFor(lab,failure).writeContract({address:desk,functionName:'request_licence',args:[work.work_id,'Commercial copying with an intentionally stale consent version.','commercial',99,'100','studio-failure-safety-'+run],value:0n}));else await replay(failure);
+ const tx=await reader.waitForTransactionReceipt({hash:state.transactions[failure],status:TransactionStatus.FINALIZED,interval:15000,retries:80});assert.equal(executionSucceeded(tx),false);
  assert.equal((await call<{credit_atto:string}>('desk','get_account',[lab.address])).credit_atto,'100');
  const before=await baseline('failed-action:withdraw',lab.address);await write('failed-action:withdraw',lab,'desk','withdraw');await receipt('failed-action:withdraw',true);assert.equal(await balance(lab.address)-before,100n);
  state.results[failure]={hash:state.transactions[failure],status:'FINALIZED',execution:'expected rollback with zero attached value'};state.results['failed-action:balance']={recovered_atto:'100'};await save();
@@ -116,7 +138,7 @@ let claims=await call<Claim[]>('court','list_claims',[0,50]);const distinct=clai
 await write('respond:distinct',lab,'court','respond',[distinct.claim_id,'','',distinct.used_at,1,''],100n);
 await write('rule:distinct',creator,'court','rule',[distinct.claim_id]);
 let ruled=await call<Claim>('court','get_claim',[distinct.claim_id]);assert.ok(ruled.ruling);assert.ok(ruled.ruling.distance_ppm>0);assert.ok(['NO_USE','DERIVATIVE_WITHIN_TERMS'].includes(ruled.ruling.decision));assert.equal(ruled.ruling.damages_band,'NONE');
-await write('appeal:distinct',creator,'court','appeal_claim',[distinct.claim_id],200n);
+await write('appeal:distinct',creator,'court','appeal_claim',[distinct.claim_id,1,'200'],200n);
 if(!state.transactions['review:distinct']){const pending=await call<Claim>('court','get_claim',[distinct.claim_id]);assert.equal(pending.status,'REVIEW_PENDING');assert.ok(pending.ruling);}
 if(!advanceOnly){await write('review:distinct',lab,'court','rule',[distinct.claim_id]);
 ruled=await call<Claim>('court','get_claim',[distinct.claim_id]);assert.equal(ruled.status,'RULED');assert.equal(ruled.appeals?.[0].outcome,'REVIEWED');}
@@ -158,5 +180,5 @@ for(const [name,who] of [['creator',creator],['lab',lab]] as const){
 assert.equal(await balance(state.contracts.court),0n);
 const sourceHashes:Record<string,string>={};
 for(const [name,file] of [['registry','work_registry'],['desk','licence_desk'],['court','infringement_court']]){const local=await readFile('contracts/'+file+'.py','utf8');assert.equal(await reader.getContractCode(state.contracts[name]),local);sourceHashes[name]=createHash('sha256').update(local).digest('hex');}
-await writeFile('deployments/studio-verification.json',JSON.stringify({source_hashes:sourceHashes,network:'GenLayer Studio',checked_at:new Date().toISOString(),isolated_contracts:state.contracts,checks:state.results,nonidentical_text_ruling:ruled.ruling,image_ruling:visualRuling.ruling,durable_grant_ruling:grantRuling.ruling,prohibited_ruling:prohibitedRuling.ruling,notes:['Real public evidence, live independent model consensus and ONNX embeddings.','Isolated contracts use 10 second fee escrow and 1200 second appeals; application uses one day and two days.','Native funding is credited before adjudication; an intentionally reverted zero-value action retained credit and its full native withdrawal was verified.','All isolated court funds settled and withdrawn with exact native balance checks.','No sample works or licences registered in application contracts.']},null,2)+'\n');
+await writeFile('deployments/studio-verification.json',JSON.stringify({actor_run:actorRun,verification_run:run,source_hashes:sourceHashes,network:'GenLayer Studio',checked_at:new Date().toISOString(),isolated_contracts:state.contracts,checks:state.results,nonidentical_text_ruling:ruled.ruling,image_ruling:visualRuling.ruling,durable_grant_ruling:grantRuling.ruling,prohibited_ruling:prohibitedRuling.ruling,notes:['Real public evidence, live independent model consensus and ONNX embeddings.','Isolated contracts use 10 second fee escrow and 1200 second appeals; application uses one day and two days.','Native funding is credited before adjudication; an intentionally reverted zero-value action retained credit and its full native withdrawal was verified.','All isolated court funds settled and withdrawn with exact native balance checks.','No sample works or licences registered in application contracts.']},null,2)+'\n');
 console.log('Studio integration passed: paid approval and release, refusal refund, distinct text embeddings, live PNG vision, durable grant, bonded review, damages, timed settlement and native withdrawals.');

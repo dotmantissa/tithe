@@ -16,6 +16,9 @@
     "test:studio": "tsx --env-file=.env.local scripts/test-studio.ts",
     "test:browser": "playwright test",
     "test:api": "tsx --env-file=.env.local scripts/test-api.ts",
+    "test:mcp": "tsx --env-file=.env.local scripts/test-mcp.ts",
+    "test:outbox": "tsx --env-file=.env.local scripts/test-outbox.ts",
+    "test:budget": "tsx --env-file=.env.local scripts/test-rpc-budget.ts",
     "verify:deployment": "tsx --env-file=.env.local scripts/verify-deployment.ts",
     "lint:contracts": "PYTHONPATH=.venv/vendor python3 scripts/lint-contracts.py",
     "reconcile": "tsx --env-file=.env.local scripts/reconcile.ts"

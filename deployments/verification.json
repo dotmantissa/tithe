@@ -1,6 +1,6 @@
 {
   "network": "GenLayer Studio",
-  "checked_at": "2026-10-12T08:28:10.148Z",
+  "checked_at": "2026-10-12T10:22:18.213Z",
   "checks": {
     "registry": {
       "snapshot": {
@@ -33,9 +33,9 @@
         "count": 0,
         "revision": 0
       },
-      "address": "0x2E18b59b1B686C943b9195940a0B14a4b69BaEE3",
-      "transaction": "0xcb2a6bcc48385a22f76c0338013aea3badd7a25fda1fd63e29685812745b710d",
-      "source_sha256": "cb6804c60e7910aa94c17d79a27c935092ae2026d4a49b1e1de134a2ce848f26",
+      "address": "0x8D82844599dA2385eaa6a164A7b9dD7726576C77",
+      "transaction": "0x186f2a37caa0e6a933f47cf2bb8068f63174e647de7ffe32ae5ed579666e2b2c",
+      "source_sha256": "375a88a30f47c15a4757ed7827506e379619e26fdc9343ef352ce8e638e24ff8",
       "source_matches": true,
       "schema_verified": true,
       "execution": "succeeded",
