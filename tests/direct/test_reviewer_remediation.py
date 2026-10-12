@@ -141,3 +141,13 @@ def test_no_copy_normalizes_irrelevant_context_and_clause_choices(direct_deploy,
     direct_vm.mock_llm(r'Tithe dispute panel.*',json.dumps(independent))
     direct_vm.mock_llm(r'Tithe reasoning verification.*','{"supported":true}')
     assert direct_vm.run_validator(leader_result={k:result[k] for k in RULING_KEYS})
+
+
+
+def test_resolved_and_immaterial_context_labels_do_not_force_consensus_failure(direct_deploy,direct_vm,direct_alice):
+    c=court(direct_deploy,direct_vm,direct_alice)
+    ruling={**panel({'decision':'USE','clause':'C1','damages_band':'HIGH'}),'distance_ppm':0,'policy_hash':''}
+    other={**ruling,'facts':{**ruling['facts'],'competing_product':'NOT_RELEVANT'}}
+    assert sys.modules[c.__module__].same_ruling(ruling,other)
+    other['facts']['competing_product']='UNRESOLVED'
+    assert not sys.modules[c.__module__].same_ruling(ruling,other)
