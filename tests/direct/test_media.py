@@ -1,3 +1,4 @@
+from conftest import fund
 import hashlib
 import pytest
 from conftest import URL, TERMS, PRICES
@@ -74,6 +75,7 @@ def test_court_image_signature_is_reproducible(direct_deploy,direct_vm,direct_al
     c=court(direct_deploy,direct_vm,direct_alice)
     key=c.file_claim(work['work_id'],URL,work['content_hash'],'0x'+direct_bob.hex(),1767268800, terms_version=1)
     direct_vm.sender=direct_bob
+    fund(c,direct_vm,100)
     c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1)
     from genlayer import gl
     seen=[]

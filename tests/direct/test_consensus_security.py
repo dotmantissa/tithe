@@ -1,3 +1,4 @@
+from conftest import fund
 import json
 import pytest
 from conftest import URL, HASH
@@ -28,12 +29,13 @@ def test_desk_canonical_metadata_and_explanation_cannot_redirect_escrow(direct_d
         assert not validator(gl.vm.Return(calldata=result))
         return result
     monkeypatch.setattr(gl.vm,'run_nondet_unsafe',hostile)
+    fund(desk,direct_vm,100)
     with direct_vm.expect_revert('Unexpected consensus fields'):
         desk.request_licence(work['work_id'],'Another commercial use with attribution.', expected_terms_version=1, expected_fee_atto='100')
     assert desk.get_count()==1
     assert desk.get_licence(first)['creator']==work['creator']
     assert desk.get_account('0x'+direct_alice.hex())['escrow_atto']=='100'
-    assert desk.get_account('0x'+direct_bob.hex())['credit_atto']=='0'
+    assert desk.get_account('0x'+direct_bob.hex())['credit_atto']=='100'
 
 
 @pytest.mark.parametrize('extra',[{'reason':{'invalid':'text'}},{'reason':'A conflicting permission.'},{'distance_ppm':-1},{'distance_ppm':True},{'distance_ppm':4000001},{'policy_hash':'not-a-hash'},{'creator':'0x'+'f'*40}])
@@ -42,6 +44,7 @@ def test_court_rejects_malformed_and_unbound_leader_fields(direct_deploy,direct_
     c=court(direct_deploy,direct_vm,direct_alice)
     key=claim(c,work,direct_bob)
     direct_vm.sender=direct_bob
+    fund(c,direct_vm,100)
     c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1)
     direct_vm.mock_llm(r'Tithe dispute panel.*',json.dumps({'decision':'USE','clause':'C2','damages_band':'LOW'}))
     ruling=c.rule(key)
@@ -58,7 +61,7 @@ def test_stale_or_missing_fee_consent_cannot_create_licence(direct_deploy,direct
     with direct_vm.expect_revert('Terms or price changed'):
         desk.request_licence(work['work_id'],'Commercial use with attribution.','commercial',version,fee)
     assert desk.get_count()==0
-    assert desk.get_account('0x'+direct_bob.hex())['credit_atto']=='0'
+    assert desk.get_account('0x'+direct_bob.hex())['credit_atto']=='100'
 
 
 def test_explicit_operation_id_is_unique_and_returns_the_committed_licence(direct_deploy,direct_vm,direct_bob,external_views):
@@ -68,7 +71,38 @@ def test_explicit_operation_id_is_unique_and_returns_the_committed_licence(direc
     request='operation-reference-1234'
     key=desk.request_licence(work['work_id'],'Commercial use with attribution.','commercial',1,'100',request)
     assert key==hashlib.sha256((Address(direct_bob).as_hex+':request:'+request).encode()).hexdigest()
+    fund(desk,direct_vm,100)
     with direct_vm.expect_revert('already recorded'):
         desk.request_licence(work['work_id'],'Commercial use with attribution.','commercial',1,'100',request)
     assert desk.get_count()==1
     assert desk.get_account('0x'+direct_bob.hex())['escrow_atto']=='100'
+
+
+def test_failed_model_keeps_the_exact_funded_fee_withdrawable(direct_deploy,direct_vm,direct_bob,external_views):
+    work,_=external_views;desk=setup_desk(direct_deploy,direct_vm,direct_bob)
+    direct_vm.mock_llm(r'.*','not JSON')
+    with direct_vm.expect_revert('LLM_ERROR'):
+        desk.request_licence(work['work_id'],'Commercial use with attribution.','commercial',1,'100')
+    assert desk.get_account('0x'+direct_bob.hex())['credit_atto']=='100'
+    assert desk.get_account('0x'+direct_bob.hex())['escrow_atto']=='0'
+    assert desk.get_count()==0
+
+
+def test_unavailable_output_keeps_initial_funding_as_credit(direct_deploy,direct_vm,direct_alice,direct_bob,external_views):
+    work,_=external_views;c=court(direct_deploy,direct_vm,direct_alice)
+    direct_vm.clear_mocks();direct_vm.mock_web(r'.*',{'status':404,'body':b''})
+    with direct_vm.expect_revert('Artifact unavailable'):claim(c,work,direct_bob)
+    assert c.get_account('0x'+direct_alice.hex())['credit_atto']=='100'
+    assert c.get_account('0x'+direct_alice.hex())['escrow_atto']=='0'
+    assert c.get_count()==0
+
+
+def test_expired_appeal_does_not_consume_prepaid_credit(direct_deploy,direct_vm,direct_alice,direct_bob,external_views):
+    work,_=external_views;c=court(direct_deploy,direct_vm,direct_alice);key=claim(c,work,direct_bob)
+    direct_vm.sender=direct_bob;fund(c,direct_vm,100);c.respond(key,accepted_used_at=1767268800,accepted_terms_version=1)
+    direct_vm.mock_llm(r'.*',json.dumps({'decision':'USE','clause':'C2','damages_band':'HIGH'}));c.rule(key)
+    fund(c,direct_vm,200);direct_vm.warp('2026-01-04T12:00:00Z')
+    with direct_vm.expect_revert('Appeal window closed'):c.appeal_claim(key)
+    assert c.get_account('0x'+direct_bob.hex())['credit_atto']=='200'
+    assert c.get_account('0x'+direct_bob.hex())['escrow_atto']=='200'
+    assert len(c.get_claim(key)['appeals'])==0

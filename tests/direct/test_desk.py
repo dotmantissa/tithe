@@ -1,3 +1,4 @@
+from conftest import fund
 import json
 import pytest
 
@@ -5,7 +6,7 @@ import pytest
 def setup_desk(direct_deploy,direct_vm,direct_bob):
     contract=direct_deploy('contracts/licence_desk.py','0x'+'1'*40)
     direct_vm.sender=direct_bob
-    direct_vm.value=100
+    fund(contract,direct_vm,100)
     return contract
 
 
@@ -42,7 +43,7 @@ def test_refuse_refunds_and_disagreement(direct_deploy,direct_vm,direct_bob,exte
     assert not direct_vm.run_validator(leader_result={'decision':'REFUSE','clause':'C1','reason':'Wrong clause'})
 
 
-@pytest.mark.parametrize('value,description,category,error',[(99,'Commercial reproduction.','commercial','exact published'),(100,'short','commercial','Describe'),(100,'Commercial reproduction.','unknown','No price')])
+@pytest.mark.parametrize('value,description,category,error',[(99,'Commercial reproduction.','commercial','funded credit'),(100,'short','commercial','Describe'),(100,'Commercial reproduction.','unknown','No price')])
 def test_request_validation(direct_deploy,direct_vm,direct_bob,external_views,value,description,category,error):
     work,_=external_views
     desk=setup_desk(direct_deploy,direct_vm,direct_bob)

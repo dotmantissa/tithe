@@ -34,3 +34,9 @@ def external_views(monkeypatch, direct_deploy, direct_vm, direct_alice, evidence
     from gltest.direct.vm import InmemManager
     direct_vm._storage = InmemManager()
     return work, licence_box
+
+
+def fund(contract,vm,amount):
+    vm.value=amount
+    contract.fund_credit()
+    vm.value=0

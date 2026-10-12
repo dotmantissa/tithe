@@ -8,8 +8,8 @@ import { studionet } from 'genlayer-js/chains';
 import { createHmac } from 'node:crypto';
 import deployment from '../../deployments/studionet.json';
 
-export const addresses = deployment.contracts;
-export type ContractName = keyof typeof addresses;
+export type ContractName = 'registry'|'desk'|'court';
+export const addresses=deployment.contracts as Record<ContractName,string>;
 export const chain = createClient({ chain: studionet });
 export function accountFor(subject: string) {
   const secret = process.env.ACCOUNT_DERIVATION_SECRET;

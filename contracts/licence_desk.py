@@ -146,7 +146,7 @@ class LicenceDesk(gl.Contract):
         self.registry = Address(registry)
         self.escrow_seconds = u256(escrow_seconds)
 
-    @gl.public.write.payable
+    @gl.public.write
     def request_licence(self, work_id: str, intended_use_text: str, use_class: str = "commercial", expected_terms_version: int = 0, expected_fee_atto: str = "", request_id: str = "") -> str:
         require(10 <= len(intended_use_text) <= 8000, "Describe your use in 10 to 8000 characters")
         work = gl.get_contract_at(self.registry).view().get_work(work_id)
@@ -154,7 +154,8 @@ class LicenceDesk(gl.Contract):
         require(use_class in terms["price_schedule_atto"], "No price for this use class")
         fee = int(terms["price_schedule_atto"][use_class])
         require(expected_terms_version == work["version"] and expected_fee_atto == str(fee), "Terms or price changed; confirm the current version and exact fee")
-        require(gl.message.value == fee, "Deposit the exact published fee")
+        require(gl.message.value == 0, "Use funded credit for the published fee")
+        require(int(self.credits[gl.message.sender_address] if gl.message.sender_address in self.credits else 0) >= fee, "Fund the published fee before requesting a licence")
         require(request_id == "" or bool(re.fullmatch("[a-zA-Z0-9:_-]{16,100}", request_id)), "Invalid request identifier")
         identifier = ":request:" + request_id if request_id else ":ordinal:" + str(len(self.licence_ids))
         licence_id = hashlib.sha256((gl.message.sender_address.as_hex + identifier).encode()).hexdigest()
@@ -175,6 +176,7 @@ class LicenceDesk(gl.Contract):
             return proposed == assess()
         ruling = canonical_decision(gl.vm.run_nondet_unsafe(assess, validator), ("APPROVE", "REFUSE"), len(terms["clauses"]))
         record = {"licence_id": licence_id, "work_id": work_id, "holder": gl.message.sender_address.as_hex, "creator": work["creator"], "terms_version": work["version"], "use_class": use_class, "intended_use": intended_use_text, "fee_atto": str(fee), "issued_at": now(), "release_at": now() + int(self.escrow_seconds), "decision": ruling["decision"], "clause": ruling["clause"], "reason": explanation(ruling["decision"], ruling["clause"], terms["clauses"])}
+        self.credits[gl.message.sender_address] = u256(int(self.credits[gl.message.sender_address] if gl.message.sender_address in self.credits else 0) - fee)
         self.licences[licence_id] = json.dumps(record, sort_keys=True)
         self.licence_ids.append(licence_id)
         self.paid[licence_id] = False
@@ -237,3 +239,9 @@ class LicenceDesk(gl.Contract):
     @gl.public.view
     def get_snapshot(self) -> dict:
         return {"count": len(self.licence_ids), "revision": int(self.revision)}
+
+    @gl.public.write.payable
+    def fund_credit(self) -> str:
+        # No web, model, consent or timing checks may stand between value and credit.
+        self._credit(gl.message.sender_address, int(gl.message.value))
+        return str(gl.message.value)

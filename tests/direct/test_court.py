@@ -1,6 +1,6 @@
 import json
 import pytest
-from conftest import URL,HASH
+from conftest import URL,HASH,fund
 
 
 def court(direct_deploy,direct_vm,direct_alice):
@@ -11,7 +11,7 @@ def court(direct_deploy,direct_vm,direct_alice):
     import genlayer_embeddings,sys
     sys.modules[c.__module__].SentenceTransformer = genlayer_embeddings.SentenceTransformer
     direct_vm.sender=direct_alice
-    direct_vm.value=100
+    fund(c,direct_vm,100)
     return c
 
 
@@ -30,6 +30,7 @@ def test_bonds_ruling_and_settlement(direct_deploy,direct_vm,direct_alice,direct
     with direct_vm.expect_revert('Both parties'):
         c.rule(key)
     direct_vm.sender=direct_bob
+    fund(c,direct_vm,100)
     c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1)
     direct_vm.mock_llm(r'Tithe dispute panel.*',json.dumps({'decision':decision,'clause':'C2','damages_band':band,'reason':'The committed output was assessed against the registered clause.'}))
     ruling=c.rule(key)
@@ -58,9 +59,10 @@ def test_claim_access_and_response_bond(direct_deploy,direct_vm,direct_alice,dir
     key=claim(c,work,direct_bob)
     direct_vm.sender=direct_charlie
     with direct_vm.expect_revert('Only the respondent'):
+        fund(c,direct_vm,100)
         c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1)
     direct_vm.sender=direct_bob
-    direct_vm.value=99
+    fund(c,direct_vm,99)
     with direct_vm.expect_revert('exact response bond'):
         c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1)
 
@@ -84,6 +86,7 @@ def test_rejects_someone_elses_licence(direct_deploy,direct_vm,direct_alice,dire
     licences['wrong']={'decision':'APPROVE','holder':("0x" + direct_alice.hex()),'work_id':work['work_id'],'issued_at':1,'terms_version':1}
     direct_vm.sender=direct_bob
     with direct_vm.expect_revert('does not cover'):
+        fund(c,direct_vm,100)
         c.respond(key,'','wrong', accepted_used_at=1767268800, accepted_terms_version=1)
 
 
@@ -92,6 +95,7 @@ def test_invalid_damages_cannot_move_money(direct_deploy,direct_vm,direct_alice,
     c=court(direct_deploy,direct_vm,direct_alice)
     key=claim(c,work,direct_bob)
     direct_vm.sender=direct_bob
+    fund(c,direct_vm,100)
     c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1)
     direct_vm.mock_llm(r'.*',json.dumps({'decision':'NO_USE','clause':'C1','damages_band':'HIGH','reason':'This output does not establish use of the work.'}))
     with direct_vm.expect_revert('Invalid damages'):
@@ -109,11 +113,12 @@ def test_bonded_appeal_preserves_history_and_conserves_funds(direct_deploy,direc
     c=court(direct_deploy,direct_vm,direct_alice)
     key=claim(c,work,direct_bob)
     direct_vm.sender=direct_bob
+    fund(c,direct_vm,100)
     c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1)
     direct_vm.mock_llm(r'.*',json.dumps({'decision':'USE','clause':'C2','damages_band':'HIGH','reason':'The output uses the work outside the published terms.'}))
     c.rule(key)
     direct_vm.sender=direct_bob if appealer=='respondent' else direct_alice
-    direct_vm.value=200
+    fund(c,direct_vm,200)
     c.appeal_claim(key)
     assert c.get_claim(key)['status']=='REVIEW_PENDING'
     assert c.get_claim(key)['appeals'][0]['previous_ruling']['decision']=='USE'
@@ -137,6 +142,7 @@ def test_appeal_access_fee_and_deadline(direct_deploy,direct_vm,direct_alice,dir
     c=court(direct_deploy,direct_vm,direct_alice)
     key=claim(c,work,direct_bob)
     direct_vm.sender=direct_bob
+    fund(c,direct_vm,100)
     c.respond(key, accepted_used_at=1767268800, accepted_terms_version=1)
     direct_vm.mock_llm(r'.*',json.dumps({'decision':'USE','clause':'C2','damages_band':'LOW','reason':'The output omitted the required creator attribution.'}))
     c.rule(key)

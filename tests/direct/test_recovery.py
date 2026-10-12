@@ -1,3 +1,4 @@
+from conftest import fund
 import hashlib
 import json
 import pytest
@@ -12,7 +13,7 @@ def prepared(direct_deploy,direct_vm,direct_alice,direct_bob,work):
     return c,key
 
 
-def respond(c,key):c.respond(key,accepted_used_at=1767268800,accepted_terms_version=1)
+def respond(c,key,vm):fund(c,vm,100);c.respond(key,accepted_used_at=1767268800,accepted_terms_version=1)
 
 
 def verdict(direct_vm,decision='USE',band='HIGH',basis='USE_TERMS'):
@@ -21,7 +22,7 @@ def verdict(direct_vm,decision='USE',band='HIGH',basis='USE_TERMS'):
 
 def test_initial_hearing_failure_has_bounded_equal_refunds(direct_deploy,direct_vm,direct_alice,direct_bob,external_views):
     work,_=external_views;c,key=prepared(direct_deploy,direct_vm,direct_alice,direct_bob,work)
-    respond(c,key)
+    respond(c,key,direct_vm)
     direct_vm.clear_mocks();direct_vm.mock_web(r'.*',{'status':404,'body':b''})
     with direct_vm.expect_revert('Artifact unavailable'):c.rule(key)
     with direct_vm.expect_revert('deadline has not passed'):c.recover_hearing(key)
@@ -36,8 +37,8 @@ def test_initial_hearing_failure_has_bounded_equal_refunds(direct_deploy,direct_
 
 def test_failed_review_preserves_ruling_and_returns_only_review_bond(direct_deploy,direct_vm,direct_alice,direct_bob,external_views):
     work,_=external_views;c,key=prepared(direct_deploy,direct_vm,direct_alice,direct_bob,work)
-    respond(c,key);verdict(direct_vm);original=c.rule(key)
-    direct_vm.value=200;c.appeal_claim(key)
+    respond(c,key,direct_vm);verdict(direct_vm);original=c.rule(key)
+    fund(c,direct_vm,200);c.appeal_claim(key)
     assert c.get_claim(key)['status']=='REVIEW_PENDING'
     direct_vm.clear_mocks();direct_vm.mock_web(r'.*',{'status':404,'body':b''})
     with direct_vm.expect_revert('Artifact unavailable'):c.rule(key)
@@ -56,6 +57,7 @@ def test_failed_review_preserves_ruling_and_returns_only_review_bond(direct_depl
 
 def test_no_response_bond_without_explicit_time_agreement(direct_deploy,direct_vm,direct_alice,direct_bob,external_views):
     work,_=external_views;c,key=prepared(direct_deploy,direct_vm,direct_alice,direct_bob,work)
+    fund(c,direct_vm,100)
     with direct_vm.expect_revert('Confirm the proposed use time'):c.respond(key)
     with direct_vm.expect_revert('Confirm the proposed use time'):c.respond(key,accepted_used_at=1767268801,accepted_terms_version=1)
     assert c.get_claim(key)['status']=='AWAITING_RESPONSE'
@@ -72,7 +74,7 @@ def test_corrected_time_needs_other_party_acceptance_and_exact_version(direct_de
     direct_vm.sender=direct_alice
     with direct_vm.expect_revert('changed'):c.accept_use_time(key,1767268800,1)
     c.accept_use_time(key,1767268801,1)
-    direct_vm.sender=direct_bob;c.respond(key,accepted_used_at=1767268801,accepted_terms_version=1)
+    direct_vm.sender=direct_bob;fund(c,direct_vm,100);c.respond(key,accepted_used_at=1767268801,accepted_terms_version=1)
     assert c.get_claim(key)['time_agreed'] is True
     assert c.get_claim(key)['used_at']==1767268801
 
@@ -91,9 +93,10 @@ def test_policy_is_claim_bound_and_immutable_through_review(direct_deploy,direct
     raw=('Research use is our policy.\nTithe policy binding: '+key+':0x'+direct_bob.hex()).encode()
     fingerprint=hashlib.sha256(raw).hexdigest()
     direct_vm.mock_web(r'https://policy.example.org/.*',{'status':200,'body':raw})
+    fund(c,direct_vm,100)
     c.respond(key,url,'',1767268800,1,fingerprint)
     verdict(direct_vm);first=c.rule(key)
-    direct_vm.value=200;c.appeal_claim(key)
+    fund(c,direct_vm,200);c.appeal_claim(key)
     direct_vm.clear_mocks()
     direct_vm.mock_web(r'https://example.org/.*',{'status':200,'body':SOURCE})
     direct_vm.mock_web(r'https://policy.example.org/.*',{'status':404,'body':b''})
@@ -108,6 +111,7 @@ def test_unbound_policy_cannot_lock_a_response_bond(direct_deploy,direct_vm,dire
     raw=b'This page does not bind the claim and account.'
     direct_vm.mock_web(r'https://policy.example.org/.*',{'status':200,'body':raw})
     with direct_vm.expect_revert('Publish the claim and account binding'):
+        fund(c,direct_vm,100)
         c.respond(key,'https://policy.example.org/policy.txt','',1767268800,1,hashlib.sha256(raw).hexdigest())
     assert c.get_claim(key)['status']=='AWAITING_RESPONSE'
     assert c.get_account('0x'+direct_bob.hex())['escrow_atto']=='100'
@@ -123,7 +127,7 @@ def test_prior_grant_is_assessed_under_its_original_terms(direct_deploy,direct_v
     c=court(direct_deploy,direct_vm,direct_alice)
     key=c.file_claim(work['work_id'],URL,HASH,'0x'+direct_bob.hex(),1767268800,2)
     licences['prior']={'decision':'APPROVE','holder':'0x'+direct_bob.hex(),'work_id':work['work_id'],'issued_at':1767268700,'terms_version':1,'use_class':'commercial','intended_use':'Commercial use with attribution.','clause':'C2','fee_atto':'100','reason':'Ignored non-authoritative old prose.'}
-    direct_vm.sender=direct_bob;c.respond(key,'','prior',1767268800,2,'')
+    direct_vm.sender=direct_bob;fund(c,direct_vm,100);c.respond(key,'','prior',1767268800,2,'')
     verdict(direct_vm,'DERIVATIVE_WITHIN_TERMS','NONE','LICENCE_TERMS');ruling=c.rule(key)
     assert direct_vm.run_validator()
     assert ruling['terms_version']==1 and ruling['terms_basis']=='LICENCE_TERMS'
@@ -133,9 +137,9 @@ def test_prior_grant_is_assessed_under_its_original_terms(direct_deploy,direct_v
 
 def test_all_three_bonded_rounds_conserve_funds_and_enforce_limit(direct_deploy,direct_vm,direct_alice,direct_bob,external_views):
     work,_=external_views;c,key=prepared(direct_deploy,direct_vm,direct_alice,direct_bob,work)
-    respond(c,key);verdict(direct_vm);c.rule(key)
+    respond(c,key,direct_vm);verdict(direct_vm);c.rule(key)
     for bond in [200,400,800]:
-        direct_vm.value=bond;c.appeal_claim(key);c.rule(key)
+        fund(c,direct_vm,bond);c.appeal_claim(key);c.rule(key)
     direct_vm.value=1600
     with direct_vm.expect_revert('Maximum appeal'):c.appeal_claim(key)
     assert c.get_account('0x'+direct_bob.hex())['escrow_atto']=='1600'

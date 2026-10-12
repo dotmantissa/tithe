@@ -12,7 +12,7 @@ if(!globals[symbol]){
   const {database}=await import('./db'),{AppError}=await import('./errors');const sql=database();
   const minute=Math.floor(Date.now()/60000),hour=Math.floor(Date.now()/3600000);
   for(const [scope,bucket,max] of [['studio:minute',minute,45],['studio:hour',hour,420]] as const){
-   const rows=await sql`INSERT INTO tithe_limits(scope,bucket) VALUES(${scope},${bucket}) ON CONFLICT(scope,bucket) DO UPDATE SET count=tithe_limits.count+1 RETURNING count`;
+   const rows=await sql`INSERT INTO tithe_limits(scope,bucket) VALUES(${scope},${bucket}) ON CONFLICT(scope,bucket) DO UPDATE SET count=tithe_limits.count+1 RETURNING count`.catch(()=>{throw new AppError('The network budget service is temporarily unavailable. Saved payments remain recoverable.',503);});
    if(Number(rows[0].count)>max)throw new AppError('Studio is busy. Your saved requests will wait safely for the next network window.',429);
   }
   return original(input,{...init,signal:init?.signal||AbortSignal.timeout(25000)});

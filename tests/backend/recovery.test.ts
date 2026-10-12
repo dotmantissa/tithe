@@ -51,3 +51,7 @@ it('aborts only unsigned expired leases and never clears a saved payment',async(
  await abortExpiredUnsent('owner');const query=m.sql.mock.calls[0][0].join('');
  expect(query).toContain('tx_hash IS NULL');expect(query).toContain('outbox_ciphertext IS NULL');expect(query).toContain('lease_until');
 });
+
+it('does not expose funding confirmation as a completed licence',()=>{
+ const op=publicOperation({...m.row,phase:'FUNDING',status:'FINALIZED'} as never);expect(op.status).toBe('FUNDING');expect(op.result).toBeUndefined();
+});

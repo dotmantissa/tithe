@@ -190,13 +190,13 @@ class InfringementCourt(gl.Contract):
         self.hearing_seconds = u256(hearing_seconds)
         self.appeal_seconds = u256(appeal_seconds)
 
-    @gl.public.write.payable
+    @gl.public.write
     def file_claim(self, work_id: str, output_url: str, output_hash: str, respondent: str, used_at: int, terms_version: int = 0, request_id: str = "") -> str:
         public_url(output_url)
         require(bool(re.fullmatch("[0-9a-f]{64}", output_hash)), "Use a lowercase SHA256 output hash")
-        require(gl.message.value == self.bond_atto, "Deposit the exact claim bond")
         work = gl.get_contract_at(self.registry).view().get_work(work_id)
         require(Address(work["creator"]) == gl.message.sender_address, "Only the registered creator may claim")
+        require(gl.message.value == 0 and int(self.credits[gl.message.sender_address] if gl.message.sender_address in self.credits else 0) >= int(self.bond_atto), "Fund the exact claim bond before filing")
         require(Address(respondent) != gl.message.sender_address and Address(respondent) != Address("0x" + "0" * 40), "Name a different respondent")
         require(terms_version > 0, "Select the proposed terms version")
         historic = gl.get_contract_at(self.registry).view().get_terms_at(work_id, used_at, terms_version)
@@ -207,18 +207,19 @@ class InfringementCourt(gl.Contract):
         identifier = ":request:" + request_id if request_id else ":ordinal:" + str(len(self.claim_ids))
         claim_id = hashlib.sha256((work_id + identifier).encode()).hexdigest()
         require(claim_id not in self.claims, "This request is already recorded")
+        self.credits[gl.message.sender_address] = u256(int(self.credits[gl.message.sender_address]) - int(self.bond_atto))
         self.claims[claim_id] = json.dumps({"claim_id": claim_id, "work_id": work_id, "claimant": work["creator"], "respondent": Address(respondent).as_hex, "output_url": output_url, "output_hash": output_hash, "used_at": used_at, "terms_version": historic["version"], "status": "AWAITING_RESPONSE", "filed_at": now(), "response_deadline": now() + int(self.response_seconds), "bond_atto": str(self.bond_atto), "policy_url": "", "policy_hash": "", "policy_text": "", "licence_id": "", "time_agreed": False, "appeals": []}, sort_keys=True)
         self.revision = u256(self.revision + 1)
         self.claim_ids.append(claim_id)
         self.total_bonds = u256(self.total_bonds + self.bond_atto)
         return claim_id
 
-    @gl.public.write.payable
+    @gl.public.write
     def respond(self, claim_id: str, policy_url: str = "", licence_id: str = "", accepted_used_at: int = 0, accepted_terms_version: int = 0, policy_hash: str = "") -> None:
         claim = self.get_claim(claim_id)
         require(claim["status"] == "AWAITING_RESPONSE" and now() <= claim["response_deadline"], "Response window closed")
         require(Address(claim["respondent"]) == gl.message.sender_address, "Only the respondent may respond")
-        require(gl.message.value == self.bond_atto, "Deposit the exact response bond")
+        require(gl.message.value == 0 and int(self.credits[gl.message.sender_address] if gl.message.sender_address in self.credits else 0) >= int(self.bond_atto), "Fund the exact response bond before responding")
         require(accepted_used_at == claim["used_at"] and accepted_terms_version == claim["terms_version"], "Confirm the proposed use time and terms version, or propose a correction")
         work = gl.get_contract_at(self.registry).view().get_work(claim["work_id"])
         def verify_evidence():
@@ -240,6 +241,7 @@ class InfringementCourt(gl.Contract):
         if licence_id:
             licence = gl.get_contract_at(self.desk).view().get_licence(licence_id)
             require(licence["decision"] == "APPROVE" and Address(licence["holder"]) == Address(claim["respondent"]) and licence["work_id"] == claim["work_id"] and licence["issued_at"] <= claim["used_at"], "Licence does not cover this respondent, work or use time")
+        self.credits[gl.message.sender_address] = u256(int(self.credits[gl.message.sender_address]) - int(self.bond_atto))
         claim.update({"status": "READY", "policy_url": policy_url, "policy_hash": policy_hash, "policy_text": policy_text, "policy_verified_at": now() if policy_url else 0, "licence_id": licence_id, "time_agreed": True, "hearing_deadline": now() + int(self.hearing_seconds)})
         self.claims[claim_id] = json.dumps(claim, sort_keys=True)
         self.revision = u256(self.revision + 1)
@@ -334,7 +336,7 @@ class InfringementCourt(gl.Contract):
         self.revision = u256(self.revision + 1)
         return ruling
 
-    @gl.public.write.payable
+    @gl.public.write
     def appeal_claim(self, claim_id: str) -> None:
         claim = self.get_claim(claim_id)
         require(claim["status"] == "RULED" and now() < claim["settle_after"], "Appeal window closed")
@@ -343,7 +345,8 @@ class InfringementCourt(gl.Contract):
         appeals = claim["appeals"]
         require(len(appeals) < 3, "Maximum appeal rounds reached")
         bond = int(self.bond_atto) * 2 ** (len(appeals) + 1)
-        require(gl.message.value == bond, "Deposit the exact escalating appeal bond")
+        require(gl.message.value == 0 and int(self.credits[gl.message.sender_address] if gl.message.sender_address in self.credits else 0) >= bond, "Fund the exact escalating appeal bond before review")
+        self.credits[gl.message.sender_address] = u256(int(self.credits[gl.message.sender_address]) - bond)
         appeals.append({"appealer": sender, "bond_atto": str(bond), "previous_ruling": claim["ruling"], "posted_at": now()})
         claim.update({"status": "REVIEW_PENDING", "appeals": appeals, "hearing_deadline": now() + int(self.hearing_seconds)})
         self.claims[claim_id] = json.dumps(claim, sort_keys=True)
@@ -452,3 +455,9 @@ class InfringementCourt(gl.Contract):
     @gl.public.view
     def get_snapshot(self) -> dict:
         return {"count": len(self.claim_ids), "revision": int(self.revision)}
+
+    @gl.public.write.payable
+    def fund_credit(self) -> str:
+        # No web, model, consent or timing checks may stand between value and credit.
+        self._credit(gl.message.sender_address.as_hex, int(gl.message.value))
+        return str(gl.message.value)
