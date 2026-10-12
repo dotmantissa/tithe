@@ -140,6 +140,7 @@ export async function refreshOperation(subject: string, id: string) {
   const changed=op.status!==state||!op.indexed;
   let indexed=op.indexed;
   if(success&&decided&&changed){try{if(op.target_id)await reconcileTarget(op.contract_name,op.target_id);indexed=true;}catch{indexed=false;}}
+  if(['FAILED','CANCELED'].includes(state)&&op.target_id&&['licence','claim'].includes(op.kind)){await sql`DELETE FROM tithe_records WHERE id=${op.target_id} AND deployment=${op.contract_address}`;indexed=true;}
   await sql`UPDATE tithe_operations SET status=${state},error=${error},result=${result?JSON.stringify(result):null}::jsonb,indexed=${indexed},next_retry_at=now()+interval '20 seconds',updated_at=now(),lease_token=CASE WHEN ${decided||state==='FAILED'||state==='CANCELED'} THEN NULL ELSE lease_token END WHERE id=${id} AND subject=${subject}`;
   return publicOperation(normalize({...op,status:state,error,result:result||undefined,indexed}));
 }

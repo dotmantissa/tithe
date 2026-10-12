@@ -257,3 +257,7 @@ class WorkRegistry(gl.Contract):
     @gl.public.view
     def get_snapshot(self) -> dict:
         return {"count": len(self.work_ids), "revision": int(self.revision)}
+
+    @gl.public.view
+    def get_clock(self) -> dict:
+        return {"unix_seconds": now()}

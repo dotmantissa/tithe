@@ -7,7 +7,7 @@ import { authenticate, checkOrigin, digest, limit, readJSON } from './security';
 import { AppError, failure } from './errors';
 import { inspectArtifact } from './artifacts';
 import { actionSchema } from './schemas';
-import { submit, refreshOperation, resumeOperation } from './operations';
+import { submit, refreshOperation, resumeOperation, publicOperation } from './operations';
 import { syncIndex } from './indexer';
 import type { Licence, Claim, Work } from './types';
 
@@ -41,6 +41,7 @@ export async function handle(request: Request, segments: string[]) {
         if(version) return json({...work,version:z.coerce.number().int().positive().parse(version),terms:await read('registry','get_terms',[work.work_id,Number(version)])});
         return json(work);
       }
+      if(path==='clock')return json(await read('registry','get_clock'));
       if(path==='stats') return json(await statistics());
       if(path==='docket') {
         const offset=pageOffset(url.searchParams.get('offset'));
@@ -51,6 +52,7 @@ export async function handle(request: Request, segments: string[]) {
       if(segments[0]==='licences'&&segments[1]) return json(await read('desk','get_licence',[z.string().regex(/^[a-f0-9]{64}$/).parse(segments[1])]));
       const subject=await authenticate(request,path!=='keys');
       if(path==='account') return json(await getAccount(subject,url));
+      if(path==='operations/find'){const key=z.string().regex(/^[a-zA-Z0-9:_-]{16,100}$/).parse(url.searchParams.get('key'));const rows=await database()`SELECT * FROM tithe_operations WHERE subject=${subject} AND idempotency_key=${key}`;if(!rows[0])throw new AppError('Operation not found.',404);return json(publicOperation(rows[0] as never));}
       if(segments[0]==='operations'&&segments[1]) return json(await refreshOperation(subject,z.string().uuid().parse(segments[1])));
       if(path==='keys') return json({keys:await database()`SELECT id,name,prefix,created_at FROM tithe_keys WHERE subject=${subject} AND revoked_at IS NULL ORDER BY created_at DESC`});
     }

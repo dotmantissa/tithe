@@ -1,4 +1,5 @@
 'use client';
+import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { AlertCircle, Check, LoaderCircle, LockKeyhole, RefreshCw, Copy, FileText, ImageIcon, ExternalLink } from 'lucide-react';
@@ -24,52 +25,64 @@ export function useApi() {
     return body as T;
   },[getAccessToken,authenticated]);
 }
-export function useResource<T>(path:string|null,privateResource=false) {
+export function useResource<T>(path:string|null,privateResource=false,pollMs=0) {
   const api=useApi(),{authenticated,ready}=usePrivy();
   const [state,setState]=useState<{data:T|null;error:string;loading:boolean}>({data:null,error:'',loading:true});
   const canLoad=!privateResource||(ready&&authenticated);
   const [revision,setRevision]=useState(0);
+  useEffect(()=>{if(!pollMs||!canLoad)return;const timer=setInterval(()=>setRevision(v=>v+1),pollMs);return()=>clearInterval(timer);},[pollMs,canLoad]);
   const reload=useCallback(()=>setRevision(v=>v+1),[]);
   useEffect(()=>{
     if(!path||!canLoad) return;
     let active=true;
     async function load(){
-      setState(s=>({...s,loading:true,error:''}));
+      setState(s=>({...s,loading:s.data===null,error:''}));
       try { const data=await api<T>(path!);if(active)setState({data,error:'',loading:false}); }
-      catch(error){if(active)setState({data:null,error:error instanceof Error?error.message:'Could not load this page.',loading:false});}
+      catch(error){if(active)setState(s=>({...s,error:error instanceof Error?error.message:'Could not load this page.',loading:false}));}
     }
     void load();return()=>{active=false;};
   },[path,api,revision,canLoad]);
   return {...state,reload};
 }
-export function useAction(onComplete?:()=>void) {
-  const api=useApi();const [operation,setOperation]=useState<Operation|null>(null),[error,setError]=useState(''),[submitting,setSubmitting]=useState(false);
-  const request=useRef<{body:string;key:string}|null>(null),complete=useRef(onComplete);
-  useEffect(()=>{complete.current=onComplete;},[onComplete]);
-  const act=async (action:unknown)=>{
-    setError('');setSubmitting(true);
-    const body=JSON.stringify(action);
-    if(!request.current||request.current.body!==body||operation?.status==='FAILED') request.current={body,key:crypto.randomUUID()};
-    try {setOperation(await api<Operation>('actions',{method:'POST',body,headers:{'Idempotency-Key':request.current.key}}));}
-    catch(e){setError(e instanceof Error?e.message:'The request could not be sent.');}
-    finally{setSubmitting(false);}
-  };
-  useEffect(()=>{
-    if(!operation||['ACCEPTED','FINALIZED','FAILED','SUBMISSION_UNCERTAIN','CANCELED'].includes(operation.status)) return;
-    let active=true,timer:ReturnType<typeof setTimeout>;
-    async function poll(){
-      try {
-        const next=await api<Operation>('operations/'+operation!.id);
-        if(!active)return;
-        setOperation(next);
-        if(['ACCEPTED','FINALIZED'].includes(next.status)) {request.current=null;complete.current?.();}
-        else if(next.status!=='FAILED') timer=setTimeout(poll,7000);
-      } catch(e){if(active){setError(e instanceof Error?e.message:'Status is temporarily unavailable.');timer=setTimeout(poll,15000);}}
-    }
-    timer=setTimeout(poll,5000);return()=>{active=false;clearTimeout(timer);};
-  },[operation,api]);
-  const busy=submitting||Boolean(operation&&!['ACCEPTED','FINALIZED','FAILED','SUBMISSION_UNCERTAIN','CANCELED'].includes(operation.status));
-  return {act,operation,error,busy};
+const terminal=(status:string)=>['FINALIZED','FAILED','CANCELED','ABORTED'].includes(status);
+export function useAction(onComplete?:()=>void){
+ const api=useApi(),{user,authenticated}=usePrivy(),pathname=usePathname();
+ const storage=user?.id?'tithe:operation:v2:'+user.id+':'+pathname:null;
+ const [operation,setOperation]=useState<Operation|null>(null),[error,setError]=useState(''),[submitting,setSubmitting]=useState(false);
+ const request=useRef<{body:string;key:string}|null>(null),complete=useRef(onComplete),notified=useRef('');
+ useEffect(()=>{complete.current=onComplete;},[onComplete]);
+ useEffect(()=>{
+  if(!storage||!authenticated)return;let active=true;
+  const stored=localStorage.getItem(storage);if(!stored)return;
+  try{const saved=JSON.parse(stored) as {id?:string;key:string};
+   void api<Operation>(saved.id?'operations/'+saved.id:'operations/find?key='+encodeURIComponent(saved.key)).then(op=>{if(active)setOperation(op);}).catch(()=>{if(active)setError('Your saved request is on your desk. Refresh its activity record to check the latest status.');});
+  }catch{localStorage.removeItem(storage);}
+  return()=>{active=false;};
+ },[storage,authenticated,api]);
+ const act=async(action:unknown)=>{
+  if(operation&&!terminal(operation.status))return;
+  setError('');setSubmitting(true);const body=JSON.stringify(action);
+  if(!request.current||request.current.body!==body||operation&&terminal(operation.status))request.current={body,key:crypto.randomUUID()};
+  if(storage)localStorage.setItem(storage,JSON.stringify({key:request.current.key}));
+  try{const op=await api<Operation>('actions',{method:'POST',body,headers:{'Idempotency-Key':request.current.key}});if(storage)localStorage.setItem(storage,JSON.stringify({id:op.id,key:request.current.key}));setOperation(op);}
+  catch(e){setError(e instanceof Error?e.message:'The request could not be sent.');}
+  finally{setSubmitting(false);}
+ };
+ useEffect(()=>{
+  if(!operation)return;
+  if(['ACCEPTED','FINALIZED','FAILED','CANCELED','ACCEPTED_REJECTED'].includes(operation.status)&&notified.current!==operation.id+':'+operation.status){notified.current=operation.id+':'+operation.status;complete.current?.();}
+  if(terminal(operation.status)){if(storage)localStorage.removeItem(storage);request.current=null;return;}
+  let active=true,timer:ReturnType<typeof setTimeout>;
+  async function poll(){
+   try{
+    const recovering=['SIGNED','SUBMISSION_UNCERTAIN','RECOVERING'].includes(operation!.status);
+    const next=await api<Operation>('operations/'+operation!.id+(recovering?'/resume':''),recovering?{method:'POST',body:'{}'}:{});
+    if(active){setError('');setOperation(next);}
+   }catch(e){if(active){setError(e instanceof Error?e.message:'Status is temporarily unavailable.');timer=setTimeout(poll,30000);}}
+  }
+  timer=setTimeout(poll,operation.status==='ACCEPTED'?15000:12000);return()=>{active=false;clearTimeout(timer);};
+ },[operation,api,storage]);
+ return {act,operation,error,busy:submitting||Boolean(operation&&!terminal(operation.status))};
 }
 export function Notice({error,children}:{error?:boolean;children:React.ReactNode}) { return <div className={error?'notice error':'notice'} role={error?'alert':'status'}>{error?<AlertCircle size={18}/>:<Check size={18}/>}<div>{children}</div></div>; }
 export function Loading({text='Fetching the latest records…'}:{text?:string}) { return <div className="loading-state" role="status"><LoaderCircle size={24} className="spinner"/><span>{text}</span></div>; }
@@ -82,8 +95,8 @@ export function AuthGate({children}:{children:React.ReactNode}) {
 }
 export function OperationNotice({operation,error,busy}:{operation:Operation|null;error:string;busy:boolean}) {
   return <>{error&&<Notice error>{error}</Notice>}{operation&&<div className="operation-status" role="status">
-    {busy?<LoaderCircle className="spinner" size={18}/>:['FAILED','SUBMISSION_UNCERTAIN','CANCELED'].includes(operation.status)?<AlertCircle size={18}/>:<Check size={18}/>}
-    <div><strong>{busy?'Your request is with the panel.':operation.status==='FAILED'?'The request did not complete.':operation.status==='SUBMISSION_UNCERTAIN'?'We are checking this submission.':operation.status==='CANCELED'?'This request was canceled.':'Your request has been recorded.'}</strong><p>{operation.error|| (busy?'You can leave this page. Your desk will keep the record.':'Open your desk to see the result and its explanation.')}</p><Link href="/account">View my desk</Link></div>
+    {busy?<LoaderCircle className="spinner" size={18}/>:['FAILED','ABORTED','ACCEPTED_REJECTED','UNDETERMINED','SUBMISSION_UNCERTAIN','CANCELED'].includes(operation.status)?<AlertCircle size={18}/>:<Check size={18}/>}
+    <div><strong>{operation.status==='SUBMISSION_UNCERTAIN'?'Your signed request is saved.':operation.status==='UNDETERMINED'?'The panel has not reached agreement.':operation.status==='ACCEPTED'?'Recorded, awaiting final confirmation.':operation.status==='ACCEPTED_REJECTED'?'The current result rejected this request.':busy?'Your request is with the panel.':['FAILED','ABORTED'].includes(operation.status)?'The request did not complete.':operation.status==='SUBMISSION_UNCERTAIN'?'We are checking this submission.':operation.status==='CANCELED'?'This request was canceled.':'Your request has been recorded.'}</strong><p>{operation.error|| (busy?'You can leave this page. We will resume checking when you return.':'Open your desk to see the result and its explanation.')}</p><Link href="/account">View my desk</Link></div>
   </div>}</>;
 }
 export function CopyButton({value,label='Copy'}:{value:string;label?:string}) {
@@ -100,8 +113,20 @@ export function WorkRow({work}:{work:Work}) {
   </Link>;
 }
 
-export function useClock() {
-  const [time,setTime]=useState(()=>Math.floor(Date.now()/1000));
-  useEffect(()=>{const timer=setInterval(()=>setTime(Math.floor(Date.now()/1000)),30000);return()=>clearInterval(timer);},[]);
-  return time;
+export function useClock(){
+ const clock=useResource<{unix_seconds:number}>('clock',false,60000),[time,setTime]=useState(()=>Math.floor(Date.now()/1000)),baseline=useRef<{network:number;local:number}|null>(null);
+ useEffect(()=>{if(clock.data)baseline.current={network:clock.data.unix_seconds,local:Date.now()};},[clock.data]);
+ useEffect(()=>{const timer=setInterval(()=>{const b=baseline.current;setTime(b?b.network+Math.floor((Date.now()-b.local)/1000):Math.floor(Date.now()/1000));},1000);return()=>clearInterval(timer);},[]);
+ return time;
+}
+
+export function TermsAtUse({workId,used,version,onVersion}:{workId:string;used:string;version:number;onVersion:(value:number)=>void}){
+ const epoch=Math.floor(new Date(used).getTime()/1000);
+ const terms=useResource<{versions:{version:number;terms:{clauses:string[]}}[]}>(Number.isFinite(epoch)&&epoch>0?'works/'+workId+'/terms-at?used_at='+epoch:null);
+ useEffect(()=>{if(terms.data?.versions.length===1)onVersion(terms.data.versions[0].version);},[terms.data,onVersion]);
+ if(!used)return null;
+ if(terms.error)return <Notice error>{terms.error}</Notice>;
+ if(terms.loading)return <Loading text="Finding the terms at that time…"/>;
+ const candidates=terms.data?.versions||[],selected=candidates.find(t=>t.version===version);
+ return <><label className="field"><span>Terms version at this time</span><select value={selected?version:0} onChange={e=>onVersion(Number(e.target.value))} required><option value={0} disabled>Choose the version both parties will assess</option>{candidates.map(t=><option value={t.version} key={t.version}>Version {t.version}</option>)}</select><small>{candidates.length>1?'More than one version shares this timestamp. Read each version before choosing.':'The other party must explicitly agree to this time and version.'}</small></label>{selected&&<div className="terms-preview">{selected.terms.clauses.map(c=><p key={c}>{c}</p>)}</div>}</>;
 }

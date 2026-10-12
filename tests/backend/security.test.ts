@@ -74,3 +74,5 @@ describe('explicit spending consent',()=>{
   });
   it('refuses unknown consent fields rather than silently discarding them',()=>expect(()=>actionSchema.parse({...action,max_fee:'100'})).toThrow());
 });
+
+it('does not stop polling an accepted execution rejection before its final network outcome',()=>expect(operationState({statusName:'ACCEPTED',txExecutionResultName:'ROLLBACK' as never} as Parameters<typeof operationState>[0])).toBe('ACCEPTED_REJECTED'));
