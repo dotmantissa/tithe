@@ -5,11 +5,13 @@ const m=vi.hoisted(()=>({sql:vi.fn(),signer:vi.fn(),write:vi.fn(),get:vi.fn(),ro
 vi.mock('../../src/lib/db',()=>({database:()=>m.sql}));
 vi.mock('../../src/lib/chain',()=>({addresses:{desk:'0x'+'2'.repeat(40)},accountFor:()=>({address:'0x'+'1'.repeat(40)}),chain:{getTransaction:m.get},signer:m.signer,operationState:(v:{state:string})=>v.state,executionSucceeded:(v:{success:boolean})=>v.success,normalize:(v:unknown)=>v}));
 vi.mock('../../src/lib/indexer',()=>({reconcileTarget:async()=>{}}));
+import {consentSeal} from '../../src/lib/consent';
 import {refreshOperation} from '../../src/lib/operations';
 const account=privateKeyToAccount(('0x'+'1'.repeat(64)) as `0x${string}`);
 beforeEach(()=>{
  vi.clearAllMocks();vi.stubEnv('ACCOUNT_DERIVATION_SECRET','b'.repeat(64));m.claimed=false;
  m.row={id:'operation',subject:'owner',kind:'licence',phase:'FUNDING',status:'PENDING',tx_hash:'0x'+'a'.repeat(64),fund_atto:'100',contract_address:'0x'+'2'.repeat(40),contract_name:'desk',function_name:'request_licence',action_args:['work','approved description','commercial',1,'100','operation'],created_at:'today',target_id:'licence'};
+ const {subject,id,contract_name,contract_address,function_name,target_id,action_args,action_json,fund_atto}=m.row;m.row.consent_seal=consentSeal({subject,id,contract_name,contract_address,function_name,target_id,action_args,action_json,fund_atto});
  m.get.mockResolvedValue({state:'FINALIZED',success:true});
  m.sql.mockImplementation(async(s:TemplateStringsArray,...values:unknown[])=>{
   const q=s.join('?');if(q.startsWith('SELECT'))return [{...m.row}];
@@ -38,3 +40,5 @@ it('keeps payment recovery separate from a crash before the second signature',as
 it('never signs the action if funding itself finalized without successful execution',async()=>{
  m.get.mockResolvedValue({state:'FAILED',success:false});const op=await refreshOperation('owner','operation');expect(op.status).toBe('FAILED');expect(m.signer).not.toHaveBeenCalled();
 });
+
+it('refuses edited persisted arguments or destinations before signing the second action',async()=>{m.row.action_args=['changed description'];const op=await refreshOperation('owner','operation');expect(op.status).toBe('ABORTED');expect(m.signer).not.toHaveBeenCalled();});

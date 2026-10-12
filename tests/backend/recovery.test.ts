@@ -11,7 +11,7 @@ const account=privateKeyToAccount(('0x'+'1'.repeat(64)) as `0x${string}`);
 beforeEach(async()=>{
  vi.clearAllMocks();vi.stubEnv('ACCOUNT_DERIVATION_SECRET','b'.repeat(64));m.address=account.address;
  const raw=await account.signTransaction({chainId:61999,type:'legacy',nonce:7,to:account.address,value:100n,gas:21000n,gasPrice:0n});
- m.row={id:'operation',subject:'owner',kind:'licence',status:'SIGNED',tx_hash:keccak256(raw),outbox_ciphertext:sealTransaction(raw,'owner','operation'),outbox_nonce:'7',attempts:0,indexed:true,contract_name:'desk',target_id:'record',function_name:'request_licence',created_at:'today'};
+ m.row={id:'operation',subject:'owner',kind:'licence',status:'SIGNED',tx_hash:keccak256(raw),outbox_ciphertext:sealTransaction(raw,'owner','operation:ACTION'),outbox_nonce:'7',attempts:0,indexed:true,contract_name:'desk',target_id:'record',function_name:'request_licence',created_at:'today'};
  m.sql.mockImplementation(async(strings:TemplateStringsArray,...values:unknown[])=>{
   const query=strings.join('?');
   if(query.startsWith('SELECT'))return values.includes('owner')?[{...m.row}]:[];

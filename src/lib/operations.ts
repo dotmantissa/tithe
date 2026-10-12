@@ -1,3 +1,4 @@
+import {consentSeal,verifyConsent} from './consent';
 import { randomUUID } from 'node:crypto';
 import { keccak256,parseTransaction } from 'viem';
 import {sealTransaction,openTransaction,validateSavedTransaction,retryDelay} from './outbox';
@@ -11,7 +12,7 @@ import { reconcileTarget } from './indexer';
 import type { Action } from './schemas';
 import type { Work, Operation, Claim } from './types';
 
-type StoredOperation=Operation&{phase:'FUNDING'|'ACTION';fund_hash:string|null;fund_atto:string;action_args:CalldataEncodable[];subject:string;idempotency_key:string;request_hash:string;contract_name:ContractName;contract_address:string;function_name:string;target_id:string|null;outbox_ciphertext:string|null;outbox_nonce:string|null;lease_token:string|null;lease_until:string|null;attempts:number;next_retry_at:string;indexed:boolean};
+type StoredOperation=Operation&{consent_seal:string;action_json:Action;phase:'FUNDING'|'ACTION';fund_hash:string|null;fund_atto:string;action_args:CalldataEncodable[];subject:string;idempotency_key:string;request_hash:string;contract_name:ContractName;contract_address:string;function_name:string;target_id:string|null;outbox_ciphertext:string|null;outbox_nonce:string|null;lease_token:string|null;lease_until:string|null;attempts:number;next_retry_at:string;indexed:boolean};
 
 export function publicOperation(row:StoredOperation):Operation{
   return {id:row.id,kind:row.kind,status:row.phase==='FUNDING'&&['ACCEPTED','FINALIZED','PENDING'].includes(row.status)?'FUNDING':row.status,tx_hash:row.tx_hash,error:row.error,created_at:row.created_at,...(row.result?{result:row.result}:{})};
@@ -77,8 +78,9 @@ export async function submit(subject: string, action: Action, idempotency: strin
   const credit=value>0n?BigInt((await read<{credit_atto:string}>(contract,'get_account',[accountFor(subject).address],true)).credit_atto):0n;
   const funding=value>credit?value-credit:0n;
   const phase=funding>0n?'FUNDING':'ACTION';
+  const approval=consentSeal({subject,id,contract_name:contract,contract_address:addresses[contract],function_name:method,target_id:target,action_args:args,action_json:action,fund_atto:funding.toString()});
   const token=randomUUID();
-  const rows=await sql`INSERT INTO tithe_operations(id,subject,idempotency_key,request_hash,kind,status,action_json,contract_name,contract_address,function_name,target_id,lease_token,lease_until,phase,fund_atto,action_args) VALUES(${id},${subject},${idempotency},${requestHash},${action.kind},'SUBMITTING',${JSON.stringify(action)}::jsonb,${contract},${addresses[contract]},${method},${target},${token},now()+interval '2 minutes',${phase},${funding.toString()},${JSON.stringify(args)}::jsonb) ON CONFLICT(subject,idempotency_key) DO NOTHING RETURNING *`.catch(error=>{
+  const rows=await sql`INSERT INTO tithe_operations(id,subject,idempotency_key,request_hash,kind,status,action_json,contract_name,contract_address,function_name,target_id,lease_token,lease_until,phase,fund_atto,action_args,consent_seal) VALUES(${id},${subject},${idempotency},${requestHash},${action.kind},'SUBMITTING',${JSON.stringify(action)}::jsonb,${contract},${addresses[contract]},${method},${target},${token},now()+interval '2 minutes',${phase},${funding.toString()},${JSON.stringify(args)}::jsonb,${approval}) ON CONFLICT(subject,idempotency_key) DO NOTHING RETURNING *`.catch(error=>{
     if(error.code==='23505') throw new AppError('Your earlier signed request is being recovered. Open its activity record before submitting another payment.',409);
     throw error;
   });
@@ -95,9 +97,10 @@ export async function submit(subject: string, action: Action, idempotency: strin
 async function signOperation(subject:string,op:StoredOperation,token:string){
  const sql=database(),id=op.id;
  try{
+  verifyConsent({subject,id,contract_name:op.contract_name,contract_address:op.contract_address,function_name:op.function_name,target_id:op.target_id,action_args:op.action_args,action_json:op.action_json,fund_atto:op.fund_atto},op.consent_seal);
   const client=signer(subject,async raw=>{
    const nonce=String(parseTransaction(raw).nonce),hash=keccak256(raw);
-   const persisted=await sql`UPDATE tithe_operations SET tx_hash=${hash},outbox_ciphertext=${sealTransaction(raw,subject,id)},outbox_nonce=${nonce},status='SIGNED',updated_at=now() WHERE id=${id} AND subject=${subject} AND lease_token=${token} AND lease_until>now() AND tx_hash IS NULL AND status='SUBMITTING' RETURNING id`;
+   const persisted=await sql`UPDATE tithe_operations SET tx_hash=${hash},outbox_ciphertext=${sealTransaction(raw,subject,id+':'+op.phase)},outbox_nonce=${nonce},status='SIGNED',updated_at=now() WHERE id=${id} AND subject=${subject} AND lease_token=${token} AND lease_until>now() AND tx_hash IS NULL AND status='SUBMITTING' RETURNING id`;
    if(!persisted[0])throw new AppError('The signing lease ended before broadcast.',409);
   });
   const hash=await client.writeContract({address:op.contract_address as `0x${string}`,functionName:op.phase==='FUNDING'?'fund_credit':op.function_name,args:op.phase==='FUNDING'?[]:op.action_args,value:op.phase==='FUNDING'?BigInt(op.fund_atto):0n});
@@ -117,7 +120,7 @@ export async function resumeOperation(subject:string,id:string){
   const leased=await sql`UPDATE tithe_operations SET lease_token=${token},lease_until=now()+interval '90 seconds',status='RECOVERING',updated_at=now() WHERE id=${id} AND subject=${subject} AND status IN ('SIGNED','SUBMISSION_UNCERTAIN','RECOVERING') AND (lease_until IS NULL OR lease_until<now()) AND next_retry_at<=now() RETURNING *`;
   if(!leased[0])return publicOperation(op);
   try{
-    const raw=openTransaction(op.outbox_ciphertext,subject,id);
+    const raw=openTransaction(op.outbox_ciphertext,subject,id+':'+(op.phase||'ACTION'));
     await validateSavedTransaction(raw,op.tx_hash,accountFor(subject).address,op.outbox_nonce!);
     let known=false;
     try{await chain.getTransaction({hash:op.tx_hash as Hash});known=true;}catch{/* Only identical signed bytes can be replayed. */}
