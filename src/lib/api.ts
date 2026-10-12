@@ -1,9 +1,12 @@
+import {withRpcClass} from './rpc-context';
+import {finalized,finality} from './finality';
+import {createHash} from 'node:crypto';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { database } from './db';
 import { accountFor, addresses, chain, read } from './chain';
-import { authenticate, checkOrigin, digest, limit, readJSON } from './security';
+import { authenticate, checkOrigin, digest, limit, limitPublic, readJSON } from './security';
 import { AppError, failure } from './errors';
 import { inspectArtifact } from './artifacts';
 import { actionSchema } from './schemas';
@@ -14,8 +17,8 @@ import type { Licence, Claim, Work } from './types';
 const json=(data: unknown,status=200)=>NextResponse.json(data,{status,headers:{'Cache-Control':'no-store'}});
 export async function searchWorks(query='',kind='',offset=0) {
   const sql=database();
-  const rows=await sql`SELECT document FROM tithe_works WHERE deployment=${addresses.registry} AND (${query}='' OR to_tsvector('english',title || ' ' || (document->'terms'->>'terms_text')) @@ plainto_tsquery('english',${query})) AND (${kind}='' OR kind=${kind}) ORDER BY (document->>'registered_at')::bigint DESC,id LIMIT 21 OFFSET ${offset}`;
-  return {works:rows.slice(0,20).map(r=>r.document as Work),has_more:rows.length>20,offset};
+  const rows=await sql`SELECT document FROM tithe_works WHERE deployment=${addresses.registry} AND document->'finality'->>'state_variant'='latest-final' AND (${query}='' OR to_tsvector('english',title || ' ' || (document->'terms'->>'terms_text')) @@ plainto_tsquery('english',${query})) AND (${kind}='' OR kind=${kind}) ORDER BY (document->>'registered_at')::bigint DESC,id LIMIT 21 OFFSET ${offset}`;
+  return {finality,works:rows.slice(0,20).map(r=>r.document as Work),has_more:rows.length>20,offset};
 }
 let statsCache:{expires:number;value:unknown}|undefined;
 let statsFlight:Promise<unknown>|undefined;
@@ -31,26 +34,40 @@ async function statistics(){
 }
 export async function handle(request: Request, segments: string[]) {
   try {
+    const path=segments.join('/');
+    const publicRead=request.method==='GET'&&(segments[0]==='works'||segments[0]==='docket'||segments[0]==='licences'||path==='clock'||path==='stats');
+    if(publicRead){await limitPublic(request);return await withRpcClass('public',()=>handleRequest(request,segments));}
+    return await withRpcClass(path.startsWith('operations/')||path==='actions'||path==='sync'?'recovery':'authenticated',()=>handleRequest(request,segments));
+  }catch(error){return failure(error);}
+}
+async function handleRequest(request:Request,segments:string[]){
+  try{
     const url=new URL(request.url),path=segments.join('/');
     if(request.method==='GET') {
       if(path==='works') return json(await searchWorks(url.searchParams.get('q')?.slice(0,200)||'',url.searchParams.get('kind')||'',pageOffset(url.searchParams.get('offset'))));
       if(segments[0]==='works'&&segments[1]) {
         const work=await read<Work>('registry','get_work',[z.string().regex(/^[a-f0-9]{64}$/).parse(segments[1])]);
-        if(segments[2]==='terms-at')return json({versions:await read('registry','get_terms_versions_at',[work.work_id,z.coerce.number().int().positive().parse(url.searchParams.get('used_at'))])});
+        if(segments[2]==='evidence')return evidenceDownload(await read<string>('registry','get_artifact',[work.work_id]),work.content_hash,work.kind);
+        if(segments[2]==='terms-at')return json({finality,versions:await read('registry','get_terms_versions_at',[work.work_id,z.coerce.number().int().positive().parse(url.searchParams.get('used_at'))])});
         const version=url.searchParams.get('version');
-        if(version) return json({...work,version:z.coerce.number().int().positive().parse(version),terms:await read('registry','get_terms',[work.work_id,Number(version)])});
-        return json(work);
+        if(version) return json({...finalized(work),version:z.coerce.number().int().positive().parse(version),terms:await read('registry','get_terms',[work.work_id,Number(version)])});
+        return json(finalized(work));
       }
       if(path==='clock')return json(await read('registry','get_clock'));
       if(path==='stats') return json(await statistics());
       if(path==='docket') {
         const offset=pageOffset(url.searchParams.get('offset'));
-        const rows=await database()`SELECT document FROM tithe_records WHERE kind='claim' AND deployment=${addresses.court} ORDER BY (document->>'filed_at')::bigint DESC,id LIMIT 21 OFFSET ${offset}`;
-        return json({claims:rows.slice(0,20).map(r=>r.document),has_more:rows.length>20,offset});
+        const rows=await database()`SELECT document FROM tithe_records WHERE kind='claim' AND deployment=${addresses.court} AND document->'finality'->>'state_variant'='latest-final' ORDER BY (document->>'filed_at')::bigint DESC,id LIMIT 21 OFFSET ${offset}`;
+        return json({finality,claims:rows.slice(0,20).map(r=>r.document),has_more:rows.length>20,offset});
       }
-      if(segments[0]==='docket'&&segments[1]) return json(await read('court','get_claim',[z.string().regex(/^[a-f0-9]{64}$/).parse(segments[1])]));
-      if(segments[0]==='licences'&&segments[1]) return json(await read('desk','get_licence',[z.string().regex(/^[a-f0-9]{64}$/).parse(segments[1])]));
+      if(segments[0]==='docket'&&segments[1]) {
+        const claim=await read<Claim>('court','get_claim',[z.string().regex(/^[a-f0-9]{64}$/).parse(segments[1])]);
+        if(segments[2]==='evidence')return evidenceDownload(await read<string>('court','get_output',[claim.claim_id]),claim.output_hash);
+        return json(finalized(claim));
+      }
+      if(segments[0]==='licences'&&segments[1]) return json(finalized(await read<Licence>('desk','get_licence',[z.string().regex(/^[a-f0-9]{64}$/).parse(segments[1])])));
       const subject=await authenticate(request,path!=='keys');
+      await limit(subject+':reads',30);
       if(path==='account') return json(await getAccount(subject,url));
       if(path==='operations/find'){const key=z.string().regex(/^[a-zA-Z0-9:_-]{16,100}$/).parse(url.searchParams.get('key'));const rows=await database()`SELECT * FROM tithe_operations WHERE subject=${subject} AND idempotency_key=${key}`;if(!rows[0])throw new AppError('Operation not found.',404);return json(publicOperation(rows[0] as never));}
       if(segments[0]==='operations'&&segments[1]) return json(await refreshOperation(subject,z.string().uuid().parse(segments[1])));
@@ -60,7 +77,7 @@ export async function handle(request: Request, segments: string[]) {
       checkOrigin(request);
       if(path==='sync') {
         if(request.headers.get('authorization')!==`Bearer ${process.env.INDEXER_SECRET}` || !process.env.INDEXER_SECRET) throw new AppError('Unauthorized.',401);
-        const progress=await syncIndex();return json({synced:progress.completed===3,...progress});
+        const progress=await withRpcClass('maintenance',()=>syncIndex());return json({synced:progress.completed===3,...progress});
       }
       const subject=await authenticate(request,path!=='keys');
       if(segments[0]==='operations'&&segments[1]&&segments[2]==='cancel'){await limit(subject+':cancel',5);return json(await cancelOperation(subject,z.string().uuid().parse(segments[1])),202);}
@@ -101,10 +118,17 @@ export async function getAccount(subject:string,url=new URL('https://tithe.inval
  const offsets=Object.fromEntries(['works','licences','claims','operations'].map(k=>[k,pageOffset(url.searchParams.get(k+'_offset'))]));
  const [balance,desk,court,works,licences,claims,operations]=await Promise.all([
   chain.getBalance({address:account.address}),read<{credit_atto:string}>('desk','get_account',[account.address]),read<{credit_atto:string;bond_atto:string}>('court','get_account',[account.address]),
-  sql`SELECT document FROM tithe_works WHERE deployment=${addresses.registry} AND lower(creator)=lower(${account.address}) ORDER BY (document->>'registered_at')::bigint DESC,id LIMIT 21 OFFSET ${offsets.works}`,
-  sql`SELECT document FROM tithe_records WHERE deployment=${addresses.desk} AND kind='licence' AND (lower(account)=lower(${account.address}) OR lower(document->>'creator')=lower(${account.address})) ORDER BY (document->>'issued_at')::bigint DESC,id LIMIT 21 OFFSET ${offsets.licences}`,
-  sql`SELECT document FROM tithe_records WHERE deployment=${addresses.court} AND kind='claim' AND (lower(account)=lower(${account.address}) OR lower(document->>'respondent')=lower(${account.address})) ORDER BY (document->>'filed_at')::bigint DESC,id LIMIT 21 OFFSET ${offsets.claims}`,
+  sql`SELECT document FROM tithe_works WHERE deployment=${addresses.registry} AND document->'finality'->>'state_variant'='latest-final' AND lower(creator)=lower(${account.address}) ORDER BY (document->>'registered_at')::bigint DESC,id LIMIT 21 OFFSET ${offsets.works}`,
+  sql`SELECT document FROM tithe_records WHERE deployment=${addresses.desk} AND kind='licence' AND document->'finality'->>'state_variant'='latest-final' AND (lower(account)=lower(${account.address}) OR lower(document->>'creator')=lower(${account.address})) ORDER BY (document->>'issued_at')::bigint DESC,id LIMIT 21 OFFSET ${offsets.licences}`,
+  sql`SELECT document FROM tithe_records WHERE deployment=${addresses.court} AND kind='claim' AND document->'finality'->>'state_variant'='latest-final' AND (lower(account)=lower(${account.address}) OR lower(document->>'respondent')=lower(${account.address})) ORDER BY (document->>'filed_at')::bigint DESC,id LIMIT 21 OFFSET ${offsets.claims}`,
   sql`SELECT id,kind,status,tx_hash,error,created_at,result,phase FROM tithe_operations WHERE subject=${subject} ORDER BY created_at DESC,id LIMIT 21 OFFSET ${offsets.operations}`,
  ]);
  return {address:account.address,balance_atto:balance.toString(),credit_atto:desk.credit_atto,court_credit_atto:court.credit_atto,bond_atto:court.bond_atto,works:works.slice(0,20).map(r=>r.document as Work),licences:licences.slice(0,20).map(r=>r.document as Licence),claims:claims.slice(0,20).map(r=>r.document as Claim),operations:operations.slice(0,20).map(r=>publicOperation(r as never)),pages:{works:{offset:offsets.works,has_more:works.length>20},licences:{offset:offsets.licences,has_more:licences.length>20},claims:{offset:offsets.claims,has_more:claims.length>20},operations:{offset:offsets.operations,has_more:operations.length>20}}};
+}
+
+function evidenceDownload(encoded:string,hash:string,kind?:string){
+ const bytes=Buffer.from(encoded,'base64');
+ if(bytes.length>2000000||createHash('sha256').update(bytes).digest('hex')!==hash)throw new Error('Preserved evidence integrity failure');
+ const image=kind==='image'||bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]));
+ return new NextResponse(bytes,{headers:{'Content-Type':image?'image/png':'text/plain; charset=utf-8','Content-Disposition':`attachment; filename="${hash}.${image?'png':'txt'}"`,'X-Content-Type-Options':'nosniff','Content-Security-Policy':"sandbox; default-src 'none'",'Cache-Control':'public, max-age=31536000, immutable','X-Tithe-State-Variant':'latest-final'}});
 }

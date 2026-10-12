@@ -4,7 +4,8 @@ import {keccak256} from 'viem';
 const m=vi.hoisted(()=>({sql:vi.fn(),get:vi.fn(),send:vi.fn(),address:'',state:'FINALIZED',cancel:vi.fn(),row:{} as Record<string,unknown>}));
 vi.mock('../../src/lib/db',()=>({database:()=>m.sql}));
 vi.mock('../../src/lib/chain',()=>({accountFor:()=>({address:m.address}),chain:{getTransaction:m.get,sendRawTransaction:m.send},executionSucceeded:()=>true,operationState:()=>m.state,normalize:(v:unknown)=>v,addresses:{},signer:()=>({cancelTransaction:m.cancel})}));
-vi.mock('../../src/lib/indexer',()=>({reconcileTarget:async()=>{}}));
+const indexed=vi.fn();
+vi.mock('../../src/lib/indexer',()=>({reconcileTarget:(...args:unknown[])=>indexed(...args)}));
 import {resumeOperation,refreshOperation,publicOperation,abortExpiredUnsent,cancelOperation} from '../../src/lib/operations';
 import {sealTransaction} from '../../src/lib/outbox';
 const account=privateKeyToAccount(('0x'+'1'.repeat(64)) as `0x${string}`);
@@ -61,3 +62,8 @@ it('never cancels a native funding transfer or an already recorded action',async
 it('does not cancel another account or a modified signed request',async()=>{m.row.phase='ACTION';m.state='PENDING';await expect(cancelOperation('stranger','operation')).rejects.toMatchObject({status:404});m.row.outbox_ciphertext='edited';await expect(cancelOperation('owner','operation')).rejects.toMatchObject({status:503});expect(m.cancel).not.toHaveBeenCalled();});
 
 it('does not cancel an attached native payment even if its stored phase is mislabeled',async()=>{m.row.phase='ACTION';m.state='PENDING';await expect(cancelOperation('owner','operation')).rejects.toMatchObject({status:409});expect(m.cancel).not.toHaveBeenCalled();});
+
+it('never publishes accepted operation targets in the durable public index',async()=>{
+ indexed.mockClear();m.row.indexed=false;m.state='ACCEPTED';await refreshOperation('owner','operation');expect(indexed).not.toHaveBeenCalled();
+ m.state='FINALIZED';await refreshOperation('owner','operation');expect(indexed).toHaveBeenCalledWith('desk','record');
+});

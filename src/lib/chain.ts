@@ -2,8 +2,10 @@ import './network';
 import './rpc-budget';
 import {cacheKey} from './rpc-budget';
 import {database} from './db';
+import {AppError} from './errors';
+import {rpcClass} from './rpc-context';
 import { createClient, createAccount } from 'genlayer-js';
-import { TransactionStatus, transactionsStatusNumberToName, type CalldataEncodable, type GenLayerTransaction } from 'genlayer-js/types';
+import { TransactionHashVariant, TransactionStatus, transactionsStatusNumberToName, type CalldataEncodable, type GenLayerTransaction } from 'genlayer-js/types';
 import { studionet } from 'genlayer-js/chains';
 import { createHmac } from 'node:crypto';
 import deployment from '../../deployments/studionet.json';
@@ -29,15 +31,33 @@ export function signer(subject: string, onSigned?: (raw: `0x${string}`) => Promi
 export function normalize<T>(value: unknown): T {
   return JSON.parse(JSON.stringify(value, (_, v) => typeof v === 'bigint' ? (v <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(v) : v.toString()) : v instanceof Map ? Object.fromEntries(v) : v));
 }
-export async function read<T>(contract: ContractName, method: string, args: CalldataEncodable[] = [],fresh=false): Promise<T> {
+const flights=new Map<string,Promise<unknown>>();
+const lookups:Record<string,string>={get_work:'lookup_work',get_licence:'lookup_licence',get_claim:'lookup_claim',get_terms:'lookup_terms'};
+type CacheEntry={found:boolean;record?:unknown};
+export async function read<T>(contract: ContractName, method: string, args: CalldataEncodable[] = [],fresh=false,variant=TransactionHashVariant.LATEST_FINAL): Promise<T> {
   const address = addresses[contract] as `0x${string}`;
   if (!address) throw new Error('The Studio contracts have not been deployed');
-  const key=cacheKey(address+':'+method+':'+JSON.stringify(args,(_,v)=>typeof v==='bigint'?v.toString():v));
+  const key=cacheKey('v2:'+variant+':'+address+':'+method+':'+JSON.stringify(args,(_,v)=>typeof v==='bigint'?v.toString():v));
+  const unwrap=(entry:CacheEntry):T=>{
+    if(!entry.found)throw new AppError('This record is not available in finalized state yet. Wait for finalization and try again.',404);
+    return entry.record as T;
+  };
   const sql=process.env.DATABASE_URL?database():null;
-  if(sql&&!fresh){const cached=await sql`SELECT value FROM tithe_rpc_cache WHERE id=${key} AND expires_at>now()`;if(cached[0])return cached[0].value as T;}
-  const value=normalize<T>(await chain.readContract({address,functionName:method,args,jsonSafeReturn:true}));
-  if(sql)await sql`INSERT INTO tithe_rpc_cache(id,value,expires_at) VALUES(${key},${JSON.stringify(value)}::jsonb,now()+interval '15 seconds') ON CONFLICT(id) DO UPDATE SET value=EXCLUDED.value,expires_at=EXCLUDED.expires_at`;
-  return value;
+  if(sql&&!fresh){const cached=await sql`SELECT value FROM tithe_rpc_cache WHERE id=${key} AND expires_at>now()`;if(cached[0])return unwrap(cached[0].value as CacheEntry);}
+  const flightKey=key+':'+rpcClass();
+  if(flights.has(flightKey))return flights.get(flightKey) as Promise<T>;
+  const promise=(async()=>{
+    const lookup=lookups[method];
+    const result=normalize<unknown>(await chain.readContract({address,functionName:lookup||method,args,jsonSafeReturn:true,transactionHashVariant:variant}));
+    const entry:CacheEntry=lookup?result as CacheEntry:{found:true,record:result};
+    if(typeof entry?.found!=='boolean'||(entry.found&&!('record' in entry)))throw new Error('Invalid chain lookup response');
+    // Only explicit contract membership results can prove absence. RPC failures
+    // are never cached as missing. Final/nonfinal caches have distinct keys.
+    if(sql)await sql`INSERT INTO tithe_rpc_cache(id,value,expires_at) VALUES(${key},${JSON.stringify(entry)}::jsonb,now()+${entry.found?15:30}*interval '1 second') ON CONFLICT(id) DO UPDATE SET value=EXCLUDED.value,expires_at=EXCLUDED.expires_at`;
+    return unwrap(entry);
+  })();
+  flights.set(flightKey,promise);
+  try{return await promise;}finally{flights.delete(flightKey);}
 }
 export function executionSucceeded(tx: GenLayerTransaction): boolean {
   if (tx.txExecutionResultName === 'FINISHED_WITH_RETURN' || tx.txExecutionResult === 1) return true;

@@ -1,3 +1,5 @@
+import {withRpcClass} from '@/lib/rpc-context';
+import {finalized} from '@/lib/finality';
 import {NextResponse} from 'next/server';
 import {z} from 'zod';
 import {authenticate,checkOrigin,limit,readJSON} from '@/lib/security';
@@ -23,7 +25,8 @@ const descriptions:Record<keyof typeof schemas,string>={search_works:'Search pub
 const tools=Object.entries(schemas).map(([name,schema])=>({name,description:descriptions[name as keyof typeof schemas],inputSchema:z.toJSONSchema(schema)}));
 const reply=(id:unknown,result:unknown)=>NextResponse.json({jsonrpc:'2.0',id,result},{headers:{'Cache-Control':'no-store'}});
 const protocolError=(id:unknown,code:number,message:string,status=200)=>NextResponse.json({jsonrpc:'2.0',id,error:{code,message}},{status});
-export async function POST(request:Request){
+export async function POST(request:Request){return withRpcClass('authenticated',()=>handleMcp(request));}
+async function handleMcp(request:Request){
  let id:unknown=null;
  try{
   checkOrigin(request);const subject=await authenticate(request);await limit(subject+':mcp',30);
@@ -51,16 +54,16 @@ export async function POST(request:Request){
    const args=schemas[name].parse(call.data.arguments||{}) as Record<string,unknown>;let output:unknown;
    if(name==='search_works')output=await searchWorks(String(args.query),String(args.kind),Number(args.offset));
    else if(name==='get_work')output=await read('registry','get_work',[String(args.work_id)]);
-   else if(name==='get_licence')output=await read('desk','get_licence',[String(args.licence_id)]);
-   else if(name==='read_docket')output=await read('court','get_claim',[String(args.claim_id)]);
+   else if(name==='get_licence')output=finalized(await read<object>('desk','get_licence',[String(args.licence_id)]));
+   else if(name==='read_docket')output=finalized(await read<object>('court','get_claim',[String(args.claim_id)]));
    else if(name==='get_terms')output=await read('registry','get_terms',[String(args.work_id),Number(args.version)]);
    else if(name==='terms_at_use')output=await read('registry','get_terms_versions_at',[String(args.work_id),Number(args.used_at)]);
    else if(name==='get_account'){const url=new URL('https://tithe.invalid/api/account');for(const [key,value] of Object.entries(args))url.searchParams.set(key,String(value));output=await getAccount(subject,url);}
    else if(name==='inspect_artifact')output=await inspectArtifact(String(args.url));
-   else if(name==='submit_action')output=await submit(subject,actionSchema.parse(args.action),String(args.idempotency_key));
-   else if(name==='cancel_operation')output=await cancelOperation(subject,String(args.operation_id));
-   else if(name==='resume_operation')output=await resumeOperation(subject,String(args.operation_id));
-   else output=await refreshOperation(subject,String(args.operation_id));
+   else if(name==='submit_action')output=await withRpcClass('recovery',()=>submit(subject,actionSchema.parse(args.action),String(args.idempotency_key)));
+   else if(name==='cancel_operation')output=await withRpcClass('recovery',()=>cancelOperation(subject,String(args.operation_id)));
+   else if(name==='resume_operation')output=await withRpcClass('recovery',()=>resumeOperation(subject,String(args.operation_id)));
+   else output=await withRpcClass('recovery',()=>refreshOperation(subject,String(args.operation_id)));
    // structuredContent must be an object, including when a tool returns an array.
    return reply(id,{content:[{type:'text',text:JSON.stringify(output)}],structuredContent:Array.isArray(output)?{items:output}:output,isError:false});
   }catch(error){const response=failure(error),body=await response.json();return reply(id,{content:[{type:'text',text:body.error}],isError:true});}

@@ -2,6 +2,7 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { PrivyClient } from '@privy-io/server-auth';
 import { database } from './db';
 import { AppError } from './errors';
+import {isIP} from 'node:net';
 export const digest = (value: string) => createHash('sha256').update(value).digest('hex');
 
 export async function authenticate(request: Request, allowKeys=true): Promise<string> {
@@ -55,4 +56,14 @@ export function authorizeMaintenance(request:Request){
   const provided=Buffer.from(request.headers.get('authorization')||'');
   const expected=Buffer.from(secret?'Bearer '+secret:'');
   if(!secret||provided.length!==expected.length||!timingSafeEqual(provided,expected))throw new AppError('Unauthorized.',401);
+}
+
+export async function limitPublic(request:Request){
+  // Trust only the hosting platform's overwritten header. Self-hosted installs
+  // share an anonymous bucket unless an explicitly trusted proxy is configured.
+  const header=process.env.VERCEL==='1'?'x-vercel-forwarded-for':process.env.TRUSTED_CLIENT_IP_HEADER;
+  const candidate=header?request.headers.get(header)?.split(',')[0].trim():undefined;
+  const caller=candidate&&isIP(candidate)?candidate:'shared-anonymous';
+  await limit('public:'+digest(caller),20);
+  await limit('public-hour:'+digest(caller),120,3600000);
 }
