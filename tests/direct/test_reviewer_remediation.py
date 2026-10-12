@@ -129,3 +129,15 @@ def test_terms_lifetime_boundary_and_duplicate_normalization(direct_deploy,direc
     for _ in range(127):c.update_terms(key,TERMS,PRICES,'commercial')
     record=c.get_work(key);assert record['version']==record['terms_version_limit']==128
     with direct_vm.expect_revert('Terms version limit'):c.update_terms(key,TERMS,PRICES,'commercial')
+
+
+def test_no_copy_normalizes_irrelevant_context_and_clause_choices(direct_deploy,direct_vm,direct_alice,direct_bob,external_views):
+    work,_=external_views;c,key=ready(direct_deploy,direct_vm,direct_alice,direct_bob,work)
+    mock_ruling(direct_vm,'NO_USE','NONE');result=c.rule(key)
+    assert result['clause']=='C1' and all(v=='NOT_RELEVANT' for k,v in result['facts'].items() if k!='reproduction')
+    direct_vm.clear_mocks()
+    independent=panel({'decision':'NO_USE','clause':'C1','damages_band':'NONE'})
+    independent['facts'].update({k:'UNRESOLVED' for k in independent['facts'] if k!='reproduction'})
+    direct_vm.mock_llm(r'Tithe dispute panel.*',json.dumps(independent))
+    direct_vm.mock_llm(r'Tithe reasoning verification.*','{"supported":true}')
+    assert direct_vm.run_validator(leader_result={k:result[k] for k in RULING_KEYS})
