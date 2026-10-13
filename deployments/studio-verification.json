@@ -1,51 +1,47 @@
 {
-  "actor_run": "v6",
-  "verification_run": "v7",
+  "actor_run": "reviewer_v1",
+  "verification_run": "reviewer_v7",
+  "reused_deployments_from": "reviewer_v1",
   "source_hashes": {
-    "registry": "7529008cb7888bbd87d2cfd657e3e1c35922fe6350316390d9149082f4f8e269",
-    "desk": "70b75ed801a1aa5c9dacadf4e3da42fa4ba782da476161158b8e68fa85a5038b",
-    "court": "375a88a30f47c15a4757ed7827506e379619e26fdc9343ef352ce8e638e24ff8"
+    "registry": "c641222ddad12696ce659480c76b43e18eae172a9e33b5991e54a8ce1881a657",
+    "desk": "a2d34561c8293f15a8579fbbef0450635b6b8f8c1f5a8af8c5ab3515750389bf",
+    "court": "63a51cfd5c62048a3e156ba19a1bcc239face50febb00e701f8b9791d7ec6ba3"
   },
   "network": "GenLayer Studio",
-  "checked_at": "2026-10-12T11:11:28.967Z",
+  "checked_at": "2026-10-13T14:02:31.201Z",
   "isolated_contracts": {
-    "registry": "0x8E7f78Fc7e2176E20Dc6fad177b2C99aCdb59216",
-    "desk": "0x83876950D5C53cB4e35b07A7a20Ad7b01fc463f3",
-    "court": "0x78e15dfA41Dc7675eb429F36cdf43290b794560B"
+    "registry": "0x9Bbd7d5d8815554934677D3aa4ceABfde0fb7Eb0",
+    "desk": "0x5dD5331b845cF002cCD4AA86Eb62469a43a153dC",
+    "court": "0x86b2BB555a1ec202b49d08672861Cc76d36F72f4"
   },
   "checks": {
     "deploy:registry": {
-      "hash": "0x4b4887cc648e80a8d7d7113907678206a0965facbf3249bf11c6a3e9a1e8a041",
-      "status": 5,
+      "hash": "0x5876d6f9caa7d3bccc9302ae64cd3bd7def7e9e7ac00bc2f832c144b2686cdf1",
+      "status": 7,
       "execution": "succeeded"
     },
     "deploy:desk": {
-      "hash": "0x394c7834a58716760756ef03d04aad626924486777d2c1dafe7291ed0bb13c8b",
-      "status": 5,
+      "hash": "0x9beeb916990ab825b180d0b3d3421e562e7430ce7c609c95e8f6b442d0eaad55",
+      "status": 7,
       "execution": "succeeded"
     },
     "register:text": {
-      "hash": "0xd456f951e9685c7eb6d7acbb46b0e0685ae3a95c9f32270fa274b73408d4a321",
-      "status": 5,
-      "execution": "succeeded"
-    },
-    "approve:paid:fund": {
-      "hash": "0xee5526029822c07a3908ae0dcb55b11b25e78dcac371e40413f563445a3f826d",
+      "hash": "0xfabdb26a43c9eaba8cc4fd246f2449429a9aeff19deb7ada452d0e68d3e67b35",
       "status": 7,
       "execution": "succeeded"
     },
     "approve:paid": {
-      "hash": "0xf7d9aff7f248af7b1a0ec9e1be9deec1f08e0f799231886b9f449632bf14e883",
-      "status": 5,
+      "hash": "0x25903e2f000f530a49e862686cc0d3cdd0b278e9071a995734970f74b20d782e",
+      "status": 7,
       "execution": "succeeded"
     },
     "release:paid": {
-      "hash": "0x153624e70352edbbd66f6954a698d638ba76e9ca4dcb67699486fddc250147e5",
-      "status": 5,
+      "hash": "0x17e7f070f4e104da41710dc9ce28691a4e7d7297b7507d3202fa7b42769d225a",
+      "status": 7,
       "execution": "succeeded"
     },
     "withdraw:paid": {
-      "hash": "0xb1e28335ce6b5684947438424061eff9e9ac11c952dad94ae16deb3ac00f1f79",
+      "hash": "0x6b966f0864f9c18ca6a7c4b7f2cdd620d4c4158c01650db27467c9392313007b",
       "status": 7,
       "execution": "succeeded"
     },
@@ -53,17 +49,17 @@
       "received_atto": "100"
     },
     "failed-action:fund": {
-      "hash": "0x3b42d3797057fb36b6f0692d18df32ae70c41605ea08e1ec4c39840817d25083",
+      "hash": "0xecce1f5428fa6e978b6916416ab11bd27ef80971c2860fca42dc4e26e473cbe6",
       "status": 7,
       "execution": "succeeded"
     },
     "failed-action:withdraw": {
-      "hash": "0x55c35a97c450937ca643d9fa3f8da63176ecf3a851cab94fb1c7142cff089f1b",
+      "hash": "0xbb9983ecc339070c77d8b18944e4f681b0ab6e583b7e6987a79cd8dc3a5e4483",
       "status": 7,
       "execution": "succeeded"
     },
     "failed-action": {
-      "hash": "0xddcefffca5c56472ac57a17d4f030ac09a2226f19d53a13073015499984ef215",
+      "hash": "0x8e16fe141a29fe549c4f4c21c99a359e5343626295dd59c9e479031077730337",
       "status": "FINALIZED",
       "execution": "expected rollback with zero attached value"
     },
@@ -71,22 +67,22 @@
       "recovered_atto": "100"
     },
     "terms:prohibit": {
-      "hash": "0xfed0788b0583017fe25d59b916117e37d819974eedf8d1d17f2efacdbcd12f65",
-      "status": 5,
+      "hash": "0x3a2acbe5e6b0adeb35d6aa6a65c83ae6abb274a58af715a88e1af7f1f1c28312",
+      "status": 7,
       "execution": "succeeded"
     },
     "refuse:paid:fund": {
-      "hash": "0xb4a9ca1d084d03918529d4c2dde7e97459e5fffd8a673c9d71f1e49fded9e14e",
+      "hash": "0xb6bf6426e6bc557be6479c5c163a20f8e0083a35307848d9379ab40dd74462b5",
       "status": 7,
       "execution": "succeeded"
     },
     "refuse:paid": {
-      "hash": "0xc2f4996c9b8b9bc3ff17d501843da23b34d8a40b9992d68bccd3e101ccf4c65b",
-      "status": 5,
+      "hash": "0x5ff723ac229f6fb7114e5fc8993ae1e244dfc273e733c5a26ecc291c699e5532",
+      "status": 7,
       "execution": "succeeded"
     },
     "withdraw:refused": {
-      "hash": "0x66e8664f1d986adc2150927ed7a1315b720b08c8ca2fdbb9ecb3b461a320a708",
+      "hash": "0xe6b1686024776324a7b718cc999bfaebb1745517f0ffb5405f0366b865adfa5c",
       "status": 7,
       "execution": "succeeded"
     },
@@ -94,217 +90,508 @@
       "received_atto": "100"
     },
     "deploy:court": {
-      "hash": "0x77412f8ec4998f4151d0e31de76d73771213345d0ea40869d5fd782ef03efa6e",
-      "status": 5,
+      "hash": "0x2886c41569580457a04cc2be5670ad4b70e982886fda8410c45f94de276d65cf",
+      "status": 7,
       "execution": "succeeded"
     },
     "claim:distinct:fund": {
-      "hash": "0xb35859228e668533d63838442f062c4eaff4b70fe1ff67cc2a8d0c82238f7373",
+      "hash": "0xcea85641ef4f4e5ce22a9d1ac2b3748741dbf2f9b48693c22132b821418a08ed",
       "status": 7,
       "execution": "succeeded"
     },
     "claim:distinct": {
-      "hash": "0xffdcbc2545783ade7eda314fdcf76e3d835be96b927676dfe0fda08dce49a8eb",
-      "status": 5,
+      "hash": "0x6f9aad631a0cd0c258f59f55376b992c1737ecd01bd0e78afd91a9f32804fc05",
+      "status": 7,
       "execution": "succeeded"
     },
     "respond:distinct:fund": {
-      "hash": "0x0126d2c2bde5ed0a1a7b9b3c21eb4b459899f6fd18cfc38bcdebad73777a8ba7",
+      "hash": "0x7923391c2e07665e92a7b0525829b3c91ddfbcfd080a1d1c74f408eadab7072c",
       "status": 7,
       "execution": "succeeded"
     },
     "respond:distinct": {
-      "hash": "0xe488a14d76eb5c46f25748d46aa7c434f9ed2ada665e5315687091a64fbb9e47",
-      "status": 5,
+      "hash": "0xb7f234a84c7bf807772604a5bc51efc2da8459a78899f140fe9f43b5d04fb057",
+      "status": 7,
       "execution": "succeeded"
     },
     "rule:distinct": {
-      "hash": "0x188daf2c30f7c81822934eaea1bf882c4a31cf573a223663d8418977e7914135",
-      "status": 5,
+      "hash": "0x4de8665a1e50fad8cbad8b817b5e27058dce5d462657a99d689f804e289236ac",
+      "status": 7,
       "execution": "succeeded"
     },
     "appeal:distinct:fund": {
-      "hash": "0xd46d7bd47c47628c3e67c86db4434f555575bc14233511a00b8eb739414c9a73",
+      "hash": "0x80411e63717d5f1230267dc36a778fa4292c2a63a935f8e0a0871190ee34ad01",
       "status": 7,
       "execution": "succeeded"
     },
     "appeal:distinct": {
-      "hash": "0x825864125a2ec014c273efd0dbd95eb82d4d181dfb14f343fca7455e9e917c3d",
-      "status": 5,
+      "hash": "0x08c64846791c0422dfb26d5df3673ceb7b0defc4413638b838037de0582980d7",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "review-response:distinct": {
+      "hash": "0x4497b46b8c7ec3a8f4755d6a30b17c007c1b4ea436c89511473064f44169ee52",
+      "status": 7,
       "execution": "succeeded"
     },
     "review:distinct": {
-      "hash": "0xad8c0e36afc51d2f23d5826fcf4c1128302a8d860450674d0e47d20344aba7d0",
-      "status": 5,
+      "hash": "0x1289c73b4e264dda8b81f4b4343900fb273bf8b826ca5c0b69a3fadb95792070",
+      "status": 7,
       "execution": "succeeded"
     },
     "claim:grant:fund": {
-      "hash": "0x8180682e5da13332f97366043e1031445603e43e027d0edb98af4c6e11119796",
+      "hash": "0x6697193bf8d3f2a91cd78e632381ffacdeaff81415a33109ace1ecd3c80ad7e5",
       "status": 7,
       "execution": "succeeded"
     },
     "claim:grant": {
-      "hash": "0xd6c9f9190e222beed26d9e5c32d795c3c601c82421aa15c9e3c8b9bdb9075190",
+      "hash": "0xea27da64d1a7e0d173d9b1fdcde4254535355525dca005940c95fa1221b83766",
       "status": 7,
       "execution": "succeeded"
     },
     "respond:grant:fund": {
-      "hash": "0x645728b95424b611ea2c1eb221dee730e0979c0cc509cf6fb0126f46bd76d8b1",
+      "hash": "0xc48b643e34a98495b1a0644ee3aa8821cf03e2a5794c471b7936c1268844ebeb",
       "status": 7,
       "execution": "succeeded"
     },
     "respond:grant": {
-      "hash": "0x9dc10ec53ea60b3a45bafd8f5a3e1ad232e3f657e12c77cce558860034e1d139",
-      "status": 5,
+      "hash": "0xc98e8ab7286d4574681173fabe25e8ae122fc1b0c567b4e375eee82db342a9f7",
+      "status": 7,
       "execution": "succeeded"
     },
     "rule:grant": {
-      "hash": "0x7a965e7b6578a0c04a853d54abdf4dd59bc59d2c69d3496f2ab620ff1ee262e8",
-      "status": 5,
+      "hash": "0xa4c8dbffdd9c86307c1fcafc159d79d38b3a5bf4ed9aff3d25a0d9819357ab8c",
+      "status": 7,
       "execution": "succeeded"
     },
     "register:image": {
-      "hash": "0x1bbcf278ac752e786a40ee5ea721359d2e6bc0ae08dd3c146ffe600b13e473ad",
-      "status": 5,
+      "hash": "0xd14acbd7499f8c705de089d42f196e8c4d38fccf098e20a3a15f7dc70f496089",
+      "status": 7,
       "execution": "succeeded"
     },
     "approve:image": {
-      "hash": "0xf30845787f7e26ceb399a9237078a8d95c7ce2dffaa52f86cae96dc62e91e2c4",
-      "status": 5,
+      "hash": "0x672e82c1cd53cb7d69ac1259af9d8111dbd9bc5743d6cb4f92f051e950fb6806",
+      "status": 7,
       "execution": "succeeded"
     },
     "claim:image:fund": {
-      "hash": "0x65c5c7f30c00b80b7c147457e850fbd810dfe2b8467b6d201f4181f9670e883f",
+      "hash": "0x9abfb5132e37993b08658b797beb889117445f1f3fea4a6e0e169b385a827eae",
       "status": 7,
       "execution": "succeeded"
     },
     "claim:image": {
-      "hash": "0x70173fd3cf19b59117108cce70b4791ea4db6001e8709d870eb4bf996e84e9dc",
-      "status": 5,
+      "hash": "0xfa46c99f203d842bb1699564ade7e31a7d6d4c1b5ab3baf51e13719d846aca69",
+      "status": 7,
       "execution": "succeeded"
     },
     "respond:image:fund": {
-      "hash": "0x81c1d694c0b43dd5ad795925d1fd1b5ba17f6f7ac131e712a75edff11d36854a",
+      "hash": "0x72458b68ab5384c1b5944188aafe0032b1866ffbd580e40ef1a3c78c1a4ba30e",
       "status": 7,
       "execution": "succeeded"
     },
     "respond:image": {
-      "hash": "0x385d455ce771f84ec0b116e14ee2586f275a272f6b40fff7e8d1d17d669455bd",
-      "status": 5,
+      "hash": "0xf09884dda3f01da4cac05daaecbeb53cc4ce17ac6994ff3ee65cae7b49b55fb7",
+      "status": 7,
       "execution": "succeeded"
     },
     "rule:image": {
-      "hash": "0x7935ce38533a864c90b7d9c6d95b846ebde8e605b1293c54ac5c6ee764c15a20",
-      "status": 5,
+      "hash": "0x5420cb2a38cbfbd0eb231e7cf904ada0afe98220953c02ee11113ba9dafac1f0",
+      "status": 7,
       "execution": "succeeded"
     },
     "claim:prohibited:fund": {
-      "hash": "0xada81f0114b6ff861a18cc1e69a04ab6164c3e81672fbb4da6669c1913acd525",
+      "hash": "0xa06676c326865689639800dc8e44e53819102e3f7a73b7dcb0d2c5e7a5f08de9",
       "status": 7,
       "execution": "succeeded"
     },
     "claim:prohibited": {
-      "hash": "0x2692d4e65e7d335ef6d5f17effcfe54a33dddac2f671b30665b4567735110229",
-      "status": 5,
+      "hash": "0xf0a25c8370d76d9cb479221a51d5965a4ac29acb44d25c1212cb2ef502abbb90",
+      "status": 7,
       "execution": "succeeded"
     },
     "respond:prohibited:fund": {
-      "hash": "0x218dbf8c770f96dd4ca1d678af2ccdbba01a55e91ae72e71d4b4b4124b189da7",
+      "hash": "0x488e59e36dceaf1ed609b37d9059532db2f5b15643586f68bd0818bb55e38a69",
       "status": 7,
       "execution": "succeeded"
     },
     "respond:prohibited": {
-      "hash": "0xedf9b94ba3e4103520d46fca88e9f3166f3a3b82fb83f11a64be5a26dbc25914",
+      "hash": "0x4fe8f292794e916db207a9b6feea4bcb2083c53ab6034146894abcc1723e14cf",
       "status": 7,
       "execution": "succeeded"
     },
     "rule:prohibited": {
-      "hash": "0x8e19293a96233513c6df7a7d1c3f90ffb368fb28ada7f3ba9b0ccabc5a953543",
-      "status": 5,
+      "hash": "0x0ddb42f99b2a9c2325e8746735ec674140e8d665759fd90cd9b409f267b15e63",
+      "status": 7,
       "execution": "succeeded"
     },
-    "settle:6e4a3e704649d6b6069ff372fd9a59050b3189271efca1c3596ee18872c5f835": {
-      "hash": "0x17c32ff397f2bfe03308261d00583d61f0dc6acaf3017c2b47b6a922cb1fad99",
-      "status": 5,
+    "register:injection": {
+      "hash": "0x0999c73cf62a93cd5d9dd34e80110962be23024f65d69be442f7207a766ad56c",
+      "status": 7,
       "execution": "succeeded"
     },
-    "settle:fe208c155c5820e05b347075820f99fcb3c199184e59b392f0bea9bf68453082": {
-      "hash": "0x147009de64aac26e7d6e98ec11fab1faa6334f788d02d63bef77c0d86e127b92",
-      "status": 5,
+    "licence:injection:fund": {
+      "hash": "0xe8f0a7eac0a848cdadce1aa01346aed5a70069930645f57a0454664f2e8e35a0",
+      "status": 7,
       "execution": "succeeded"
     },
-    "settle:fda4398cfbfe4909382369b82b2888cd87587b3e7a107740b0e384190626e43b": {
-      "hash": "0xc767d631ad0123e4bc754e20447f7a280495d5e587d02a4867610434023ff4fd",
-      "status": 5,
+    "licence:injection:timeout:1": {
+      "hash": "0xccd0c7c07fe66612591063a04e2939e5511d7592e0a04cc91a7d5abc2190da5f",
+      "status": "FINALIZED",
+      "consensus": "TIMEOUT",
+      "execution": "timed out",
+      "state_applied": false,
+      "credit_preserved": true
+    },
+    "licence:injection": {
+      "hash": "0x2f27503042bf1a143592c4af206cac6bfb1992b6478f61e6b111de1a6e98ee28",
+      "status": 7,
       "execution": "succeeded"
     },
-    "settle:1796cabd728975a739d15e205accb4e0a2b6061735809b3bacc55e43fe2bcf56": {
-      "hash": "0x8203eb5cf690976c1dee03d2a3e6f81b6cd14301e02dd60b3d8576538336af70",
-      "status": 5,
+    "claim:injection:fund": {
+      "hash": "0xed0f3fbc2fae50bdf152a31b37f721f112c86334fe264d086d1090955b4abedc",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "claim:injection": {
+      "hash": "0x1601b0dec2796a9cf3d94c05cdd2d62d3854dfb273aace118f1100834bd8983c",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "respond:injection:fund": {
+      "hash": "0x7ea31b67fb42cec4d2423ded5cea87219efa045acd96aa3467fba9ed28057b54",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "respond:injection": {
+      "hash": "0x08fa512f5fa111561c878150e79e48eb5faa01650d64ddcd75519c1bf6076db3",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "rule:injection": {
+      "hash": "0xfb69d55b14d97312707dc3c757067390c41cd9441c645e50a0f6f53681c859d8",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "register:vision-injection": {
+      "hash": "0xb585239616dd49fa753796d2b37f20ba0662a0c0c8e98d151bedca6b7c60a099",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "licence:vision-injection": {
+      "hash": "0x50b0f9e6e0ce1083effcf8bee6512121ab3c7e39b5ff8e6169d28dd7c51113de",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "claim:vision-injection:fund": {
+      "hash": "0xb19457c376e26aaac6dd4b5d7e6071cbb7e1a329b15ea7b6172c4565c6088f65",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "claim:vision-injection": {
+      "hash": "0xd7b81b05497b6abfbba465d872c740293fd2186751125041905e96a26be29151",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "respond:vision-injection:fund": {
+      "hash": "0xcd9a7ff22d0d4a1cad204a2094d8d58f322b2ed3b4ce0504f07f63d48b0465b9",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "respond:vision-injection": {
+      "hash": "0xf6559eb6272cccc0ce77b56ff44862ac407f706b12230d5e19bfc573534bfd58",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "rule:vision-injection": {
+      "hash": "0xb69f2f84b913f3c47bd9166954aa7c2ea1a85c09ed294d4e156d2b9048ae044c",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "register:context": {
+      "hash": "0x96e72dc7a284f51e4d55443134cfaad3f65715f227d51e3c16c3314f2897dbd8",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "claim:context:fund": {
+      "hash": "0x78b567be4e211c9f6a0dddbb9c5bfade9b56333377339970661ee399b377a09f",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "claim:context": {
+      "hash": "0xf822e2639f76130d85b19b046cb3c270e2f7acff555c318a8844db9058533430",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "respond:context:fund": {
+      "hash": "0x73cf209cdcbbfb390dab2e5187f3d36bd3f1cab7cd1a5d0cffd310e65e07fe9d",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "respond:context": {
+      "hash": "0x7e9ee0d2fe3041bcad865f4deedd73c85b64e87851cf72c1e230a486d6f13f6c",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "rule:context": {
+      "hash": "0xfc6ce6d180a5555645c59acf76afe18459c0065e01cce2edf9f261345afdc3ef",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "settle:3bd9d76a3ae4ce135c18f7079b628743bbeb322b79230dc51d04452b8b4d447f": {
+      "hash": "0xb9d81ce9ca942aea3b290f70dde02e03b3cadeeff76647aee72b14716a896657",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "settle:a891122f6ab281b90b79d77887a6e7bc94537d0fec117132384bb055fabb1377": {
+      "hash": "0xb6f55ba50710b751f372b30c84b6924f138bcfa16c072b44a5c2a52f8b47a357",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "settle:abb7b39823dc3b1f72799682f21eb37d142625c41a171f9d051aeaf5e80b20e1": {
+      "hash": "0x8139ed8d888f8beb4e15db171e6dcc3b4bb03f6a2ecfe2d0258d1c1ccaa70e45",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "settle:0937641a58966484e7c742860f7c5a09149b1fa1a516801856ed56088df5130b": {
+      "hash": "0x7f77e3fe9014b1507c149952e35325b66693c7266ba8e086e7fb3f76dcc1d237",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "settle:54664a1909609e755d2d564fb9b23fedaeaab1a915a57bb1a36ed9ad1a764de6": {
+      "hash": "0x2e191e9be6f25a91ae3aabb3c5dc28d776fae2d3c5129a5b6d4bc19535f4e2c8",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "settle:e195196a47c7e82518df2f87f8955c57565d10de492d025418a2ad1b6011b437": {
+      "hash": "0xa554b556c665be2aa670e3da27aca4118e61056a75c9601d7224173e890e1272",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "settle:49e4404c2ed669cb0b796d0c67c0e9d5478a736bb41a970b6abaf6ea05096933": {
+      "hash": "0x58723f71f9294b05b49c1420570207e0c7266807ddbd57d04bf46af98c035753",
+      "status": 7,
       "execution": "succeeded"
     },
     "withdraw:court:creator": {
-      "hash": "0x841a8a138a043c1aa84a5337673dc0aca182dd288a0498aad27e9b4586310c51",
+      "hash": "0xcc50734b300832e0f88a363157e675c06f41a00e29ef490e529a56d238dd21dc",
       "status": 7,
       "execution": "succeeded"
     },
     "withdraw:court:creator:balance": {
-      "received_atto": "500"
+      "received_atto": "900"
     },
     "withdraw:court:lab": {
-      "hash": "0x284efce97dc053719fa7329dead452d64b842a9237c1ca5abed12de9f32880c7",
+      "hash": "0x5eee41cc95c83967aacc7e40020712e672697548378ecda7335b0696ad06a8bf",
       "status": 7,
       "execution": "succeeded"
     },
     "withdraw:court:lab:balance": {
-      "received_atto": "500"
+      "received_atto": "700"
+    },
+    "withdraw:adversarial-refunds": {
+      "hash": "0x00820709221de2b4ba133d6e5b02ad2369cd8dfb35a4a82abaebe5c8f66b687f",
+      "status": 7,
+      "execution": "succeeded"
+    },
+    "withdraw:adversarial-refunds:balance": {
+      "received_atto": "100"
     }
   },
   "nonidentical_text_ruling": {
     "clause": "C1",
     "damages_band": "NONE",
-    "decision": "DERIVATIVE_WITHIN_TERMS",
+    "damages_reason": "No copying is established; damages are NONE.",
+    "decision": "NO_USE",
     "distance_ppm": 344116,
+    "evidence_refs": [
+      "SOURCE",
+      "OUTPUT",
+      "CLAIMANT",
+      "RESPONDENT",
+      "TERMS"
+    ],
+    "facts": {
+      "actual_use": "NOT_RELEVANT",
+      "attribution": "NOT_RELEVANT",
+      "commercial_activity": "NOT_RELEVANT",
+      "competing_product": "NOT_RELEVANT",
+      "distribution": "NOT_RELEVANT",
+      "reproduction": "NO_COPYING"
+    },
     "policy_hash": "",
-    "reason": "The panel found use within the terms under C1. The recorded condition is: Research and commercial copying of all or part of this work are permitted without attribution. Commercial use requires the published commercial fee. Research use is free.",
+    "quoted_clause": "C1: Research and commercial copying of all or part of this work are permitted without attribution. Commercial use requires the published commercial fee. Research use is free.",
+    "reason": "The source is an LLM-driven ERC-20 token contract: its distinctive expression lies in the `balances: TreeMap[Address, u256]` field, a parameterised constructor assigning total supply, and a `transfer` method that constructs a multi-part LLM prompt, calls `gl.nondet.exec_prompt` and `gl.eq_principle.strict_eq`, parses a JSON result, and iterates over updated balances. The output is a plain key-value user-storage contract: `storage: TreeMap[Address, str]`, a no-op constructor, and an `update_storage` method that stores a string directly with no LLM invocation whatsoever. The shared elements — framework header comment and dependency pin, `genlayer`/`genlayer.types` imports, `gl.contract.Contract` base class, `@gl.public.view`/`@gl.public.write` decorators, `TreeMap[Address, ...]` storage type, and the `{k.as_hex: v …}` dict-comprehension pattern — are ordinary platform framework idioms and generic programming patterns, not distinctive expression. No substantial recognisable passage and no distinctive arrangement from the source appears in the output. The review ground requesting concrete correspondences is addressed: the only artifact-level correspondences are these generic framework elements, which the rules expressly exclude from establishing copying. Substantively different domain logic, field types, constructor signatures, and the complete absence of LLM-prompt machinery confirm no copying.",
     "terms_basis": "USE_TERMS",
     "terms_version": 1
   },
   "image_ruling": {
     "clause": "C1",
     "damages_band": "NONE",
+    "damages_reason": "No damages are awarded because the established copying and use fully comply with the terms of Clause C1, which permits such use without restriction or requirement for payment.",
     "decision": "DERIVATIVE_WITHIN_TERMS",
     "distance_ppm": 0,
+    "evidence_refs": [
+      "SOURCE",
+      "OUTPUT",
+      "CLAIMANT",
+      "RESPONDENT",
+      "TERMS"
+    ],
+    "facts": {
+      "actual_use": "ESTABLISHED",
+      "attribution": "ESTABLISHED",
+      "commercial_activity": "ESTABLISHED",
+      "competing_product": "ESTABLISHED",
+      "distribution": "ESTABLISHED",
+      "reproduction": "COPYING"
+    },
     "policy_hash": "",
-    "reason": "The panel found use within the terms under C1. The recorded condition is: All copying and derivative uses of this image are permitted without attribution.",
+    "quoted_clause": "C1: All copying and derivative uses of this image are permitted without attribution.",
+    "reason": "The output image is byte-identical to the source image, as evidenced by the matching spatial color signatures across all 16 regions and distinct hash values (source_hash: dbdcb9a9f8ec2c54ff99e99636059bbd57194ed84e2cca5e53853aef293faf42, output_hash: c826f0a7426e75b6062226c87f5f02783e6e432e4d13d7ea11c7967d3519d43c). This establishes copying of the entire distinctive image composition. Both parties admit the actual use is research comparison of the entire images, distributed to research colleagues, with no commercial activity, no competing product, and no attribution displayed. Clause C1 explicitly permits all copying and derivative uses without attribution, covering the established actual use. Thus, the copying and use are within the granted terms.",
     "terms_basis": "USE_TERMS",
     "terms_version": 1
   },
   "durable_grant_ruling": {
     "clause": "C1",
     "damages_band": "NONE",
+    "damages_reason": "No damages: copying and commercial distribution were established, but they were covered by the prior commercial licence, and the committed licence record shows the required fee was released.",
     "decision": "DERIVATIVE_WITHIN_TERMS",
     "distance_ppm": 0,
+    "evidence_refs": [
+      "SOURCE",
+      "OUTPUT",
+      "LICENCE",
+      "TERMS",
+      "CLAIMANT",
+      "RESPONDENT"
+    ],
+    "facts": {
+      "actual_use": "ESTABLISHED",
+      "attribution": "ESTABLISHED",
+      "commercial_activity": "ESTABLISHED",
+      "competing_product": "ESTABLISHED",
+      "distribution": "ESTABLISHED",
+      "reproduction": "COPYING"
+    },
     "policy_hash": "",
-    "reason": "The panel found use within the terms under C1. The recorded condition is: Research and commercial copying of all or part of this work are permitted without attribution. Commercial use requires the published commercial fee. Research use is free.",
+    "quoted_clause": "C1: Research and commercial copying of all or part of this work are permitted without attribution. Commercial use requires the published commercial fee. Research use is free.",
+    "reason": "Source and output are byte-identical complete artifacts, establishing copying. Both parties' usage statements consistently admit actual commercial copying of the entire work in a paid product, distribution of the full output to paying customers, no competing product, and no attribution. A prior APPROVE commercial licence with fee_released true covers this established use, and the licence terms permit commercial copying without attribution upon payment, so the copying falls within the granted terms.",
     "terms_basis": "LICENCE_TERMS",
     "terms_version": 1
   },
   "prohibited_ruling": {
     "clause": "C1",
     "damages_band": "HIGH",
+    "damages_reason": "High damages (100%) are assigned because the parties established that the output was used in a commercial product that charges customers for access, meeting the criteria for substantial prohibited commercial reuse.",
     "decision": "USE",
     "distance_ppm": 0,
+    "evidence_refs": [
+      "SOURCE",
+      "OUTPUT",
+      "CLAIMANT",
+      "RESPONDENT",
+      "TERMS"
+    ],
+    "facts": {
+      "actual_use": "ESTABLISHED",
+      "attribution": "NOT_RELEVANT",
+      "commercial_activity": "ESTABLISHED",
+      "competing_product": "ESTABLISHED",
+      "distribution": "ESTABLISHED",
+      "reproduction": "COPYING"
+    },
     "policy_hash": "",
-    "reason": "The panel found use outside the terms under C1. The recorded condition is: All copying, quotation and commercial use of this work are prohibited. Refuse every request to copy this work.",
+    "quoted_clause": "C1: All copying, quotation and commercial use of this work are prohibited. Refuse every request to copy this work.",
+    "reason": "The output is byte-identical to the source code, establishing reproduction of a substantial recognizable passage and distinctive arrangement. Both parties explicitly admit to commercial copying of the entire work within a paid product distributed to customers. Clause C1 strictly prohibits all copying and commercial use. Since the material conditions of commercial distribution and copying are established by mutual admission, a breach of C1 is confirmed.",
     "terms_basis": "USE_TERMS",
     "terms_version": 2
   },
+  "adversarial_text_policy_use_ruling": {
+    "clause": "C1",
+    "damages_band": "HIGH",
+    "damages_reason": "HIGH damages apply because the evidence establishes complete copying of the work and commercial distribution to paying customers in a paid product, which is substantial prohibited commercial reuse under C1.",
+    "decision": "USE",
+    "distance_ppm": 0,
+    "evidence_refs": [
+      "SOURCE",
+      "OUTPUT",
+      "CLAIMANT",
+      "RESPONDENT",
+      "TERMS"
+    ],
+    "facts": {
+      "actual_use": "ESTABLISHED",
+      "attribution": "ESTABLISHED",
+      "commercial_activity": "ESTABLISHED",
+      "competing_product": "ESTABLISHED",
+      "distribution": "ESTABLISHED",
+      "reproduction": "COPYING"
+    },
+    "policy_hash": "2cf8d9b55d3e3b2689a248a19c1d83e7f1b219a642bac77500981a46f80454fd",
+    "quoted_clause": "C1: All copying, quotation and commercial use of this work are prohibited. Refuse every request to copy this work.",
+    "reason": "Source and output are byte-identical, including the full expressive passage, so copying is established. Both parties consistently attest that the full output was supplied to paying customers in a paid product, establishing actual commercial distribution. With no licence and C1 prohibiting all copying and commercial use, the established conduct breaches the applicable use terms.",
+    "terms_basis": "USE_TERMS",
+    "terms_version": 1
+  },
+  "adversarial_image_ruling": {
+    "clause": "C1",
+    "damages_band": "HIGH",
+    "damages_reason": "High damages (100%) are awarded due to the established substantial commercial reuse of the byte-identical artifact in a paid product, which directly violates the C1 prohibition on commercial copying.",
+    "decision": "USE",
+    "distance_ppm": 0,
+    "evidence_refs": [
+      "SOURCE",
+      "OUTPUT",
+      "CLAIMANT",
+      "RESPONDENT",
+      "TERMS"
+    ],
+    "facts": {
+      "actual_use": "ESTABLISHED",
+      "attribution": "ESTABLISHED",
+      "commercial_activity": "ESTABLISHED",
+      "competing_product": "ESTABLISHED",
+      "distribution": "ESTABLISHED",
+      "reproduction": "COPYING"
+    },
+    "policy_hash": "",
+    "quoted_clause": "C1: All commercial copying of this image is prohibited. Research use is permitted.",
+    "reason": "The source and output artifacts are byte-identical (0 distance_ppm, identical SHA-256 hashes), establishing complete reproduction of the distinctive spatial color signature. The respondent admitted to commercial copying of the entire work in a paid product, charging customers 10 GEN for the output. Clause C1 explicitly prohibits commercial copying. As the established use is commercial rather than research, it constitutes a breach of the registered terms. The embedded image text attempting to override terms was ignored as untrusted data per the panel instructions.",
+    "terms_basis": "USE_TERMS",
+    "terms_version": 1
+  },
+  "insufficient_context_ruling": {
+    "clause": "C1",
+    "damages_band": "NONE",
+    "damages_reason": "No damages can be awarded because copying is established but the material condition for breach under C1—commercial rather than permitted research use—remains unresolved on the committed evidence.",
+    "decision": "INSUFFICIENT_EVIDENCE",
+    "distance_ppm": 0,
+    "evidence_refs": [
+      "SOURCE",
+      "OUTPUT",
+      "TERMS",
+      "CLAIMANT",
+      "RESPONDENT"
+    ],
+    "facts": {
+      "actual_use": "UNRESOLVED",
+      "attribution": "ESTABLISHED",
+      "commercial_activity": "UNRESOLVED",
+      "competing_product": "ESTABLISHED",
+      "distribution": "UNRESOLVED",
+      "reproduction": "COPYING"
+    },
+    "policy_hash": "",
+    "quoted_clause": "C1: Research copying is permitted without attribution. All commercial copying is prohibited.",
+    "reason": "The committed source and output are byte-identical complete artifacts, so reproduction is established. Clause C1 turns on whether the actual use was research or commercial, but the parties provide directly conflicting accounts of actual purpose, distribution, and payment activity. Both sides agree there was no attribution and no competing product, but those points do not resolve the material C1 question.",
+    "terms_basis": "USE_TERMS",
+    "terms_version": 1
+  },
   "notes": [
-    "Real public evidence, live independent model consensus and ONNX embeddings.",
-    "Isolated contracts use 10 second fee escrow and 1200 second appeals; application uses one day and two days.",
+    "Preserved hash-verified evidence, live independent model consensus and ONNX embeddings.",
+    "Isolated contracts use 10 second fee escrow, 4 hour hearings and 2 hour appeals to accommodate live consensus latency; application uses one day hearings and two day appeals.",
     "Native funding is credited before adjudication; an intentionally reverted zero-value action retained credit and its full native withdrawal was verified.",
-    "All isolated court funds settled and withdrawn with exact native balance checks.",
+    "Source/intended-use/policy injection and conflicting-context insufficiency exercised with live models. All isolated court funds settled and withdrawn with exact native balance checks.",
     "No sample works or licences registered in application contracts."
   ]
 }
