@@ -1,10 +1,10 @@
 # Verification record
 
-Audit repairs checked on 12 October 2026. The previous live reports contain exact addresses, transactions and source hashes for the earlier release. They do not validate the current durable-evidence revision until regenerated. Current local checks pass; final-source court suite and public deployment verification remain in progress. An intermediate isolated court has finalized a real insufficient-evidence ruling with majority agreement; its source precedes the latest copying-criteria refinement.
+Audit repairs checked on 13 October 2026. The previous live reports contain exact addresses, transactions and source hashes for the earlier release. They do not validate the current durable-evidence revision until regenerated. Current local checks pass; final-source court suite and public deployment verification remain in progress. An intermediate isolated court has finalized a real insufficient-evidence ruling with majority agreement; its source precedes the latest copying-criteria refinement.
 
 | Check | Result |
 | :--- | :--- |
-| Direct contract tests | 129 passed across registry, licence desk, court, funding and transfers |
+| Direct contract tests | 133 passed across registry, licence desk, court, funding and transfers |
 | Backend and component tests | 145 passed |
 | ESLint and TypeScript | Passed |
 | GenVM lint | All three contracts passed |
@@ -16,6 +16,8 @@ Audit repairs checked on 12 October 2026. The previous live reports contain exac
 | Application configuration | Default fee escrow, bonds, response, hearing and appeal windows verified |
 | Credential scan | No local credentials in working source, Git history or public build assets |
 | Runtime dependency audit | Zero high or critical advisories; 27 moderate upstream advisories |
+
+The latest isolated grant hearing finalized without majority agreement and applied no ruling. Candidate execution succeeded in some rounds, but independent factual verification rejected some narratives. The revised verifier explicitly selects the agreed original grant or use-time terms and explains that established negative facts are not positive assertions. The original-grant regression checks this exact evidence binding. Four additional tests prove that retrying a transient assessment still rejects repeated failures, a contradictory independent finding and unsupported reasoning. The fresh court suite for this source remains pending; these regressions do not replace live consensus.
 
 The direct suite includes hostile leader fields, canonical explanations, exact monetary consent, stale historical choices, prior licence terms, immutable policies, failed hearings and reviews, all damages bands, every appeal round, fund conservation, corrupt media and strict URL checks. Funded credit survives failed evidence, malformed model output and expired appeals. Direct tests substitute external calls and explicitly exercise validator comparisons; they do not establish real model consensus.
 
