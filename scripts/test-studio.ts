@@ -5,11 +5,11 @@ import { createHash } from 'node:crypto';
 import { keccak256 } from 'viem';
 import { createClient } from 'genlayer-js';
 import { studionet } from 'genlayer-js/chains';
-import { TransactionHashVariant, TransactionStatus, type Hash, type CalldataEncodable } from 'genlayer-js/types';
+import { TransactionHashVariant, TransactionStatus, transactionResultNumberToName, type Hash, type CalldataEncodable } from 'genlayer-js/types';
 import { accountFor, executionSucceeded, normalize, operationState } from '../src/lib/chain';
 import type { Work, Licence, Claim } from '../src/lib/types';
 
-type State={contracts:Record<string,`0x${string}`>;transactions:Record<string,Hash>;signed:Record<string,`0x${string}`>;source?:{url:string;hash:string};results:Record<string,unknown>;baselines?:Record<string,string>;expectedWithdrawals?:Record<string,string>};
+type State={contracts:Record<string,`0x${string}`>;transactions:Record<string,Hash>;signed:Record<string,`0x${string}`>;source?:{url:string;hash:string};results:Record<string,unknown>;baselines?:Record<string,string>;expectedWithdrawals?:Record<string,string>;licenceTimeoutRetries?:Record<string,number>};
 await mkdir('.secrets',{recursive:true});
 const run=process.env.STUDIO_TEST_RUN||'v1';
 const advanceOnly=process.env.STUDIO_TEST_PHASE==='advance';
@@ -25,6 +25,7 @@ const grantOperation=grantAttempt===1?'grant':'grant:'+grantAttempt;
 const grantRequest=(attempt:number)=>'studio-durable-grant-'+run+(attempt===1?'':'-retry-'+attempt);
 const creator=accountFor('tithe:integration:creator:'+actorRun),lab=accountFor('tithe:integration:lab:'+actorRun);
 class SavedForBroadcast extends Error {}
+class FinalizedLicenceTimeout extends Error {}
 function clientFor(who:typeof creator,operation:string){
   const sign=who.signTransaction;
   return createClient({chain:studionet,account:{...who,signTransaction:async(...args:Parameters<typeof sign>)=>{
@@ -68,6 +69,7 @@ async function receipt(operation:string,final=true){
   assert.ok(tx);
   if(!executionSucceeded(tx)){
     await writeFile('.secrets/studio-execution-error-'+run+'.json',JSON.stringify({operation,tx}),{mode:0o600});
+    if(operationState(tx)==='FAILED'&&String(tx.resultName||transactionResultNumberToName[String(tx.result) as keyof typeof transactionResultNumberToName])==='TIMEOUT')throw new FinalizedLicenceTimeout(operation);
     console.log(operation+': execution failed; saved diagnostic receipt in secure local state');
     throw new Error(operation+' execution failed');
   }
@@ -96,10 +98,31 @@ async function write(operation:string,who:typeof creator,name:string,method:stri
   const shortfall=value-BigInt(credit.credit_atto);
   if(shortfall>0n){const funding=operation+':fund';if(!state.transactions[funding])await stage(funding,async()=>clientFor(who,funding).writeContract({address:state.contracts[name],functionName:'fund_credit',args:[],value:shortfall}));await receipt(funding,true);}
  }
- let justBroadcast=false;
- if(!state.transactions[operation]){console.log('Submitting '+operation);await stage(operation,async()=>clientFor(who,operation).writeContract({address:state.contracts[name],functionName:method,args,value:0n}));justBroadcast=true;}
- if(!justBroadcast)await replay(operation);
- return receipt(operation);
+ for(;;){
+  let justBroadcast=false;
+  if(!state.transactions[operation]){console.log('Submitting '+operation);await stage(operation,async()=>clientFor(who,operation).writeContract({address:state.contracts[name],functionName:method,args,value:0n}));justBroadcast=true;}
+  if(!justBroadcast)await replay(operation);
+  try{return await receipt(operation);}catch(error){
+   if(!(error instanceof FinalizedLicenceTimeout)||name!=='desk'||method!=='request_licence')throw error;
+   state.licenceTimeoutRetries||={};const attempt=(state.licenceTimeoutRetries[operation]||0)+1;
+   assert.ok(attempt<=2,'A finalized licence timeout exceeded the bounded retry limit');
+   const requestId=args[5];assert.equal(typeof requestId,'string');assert.ok(requestId);
+   const licenceId=createHash('sha256').update(who.address+':request:'+requestId).digest('hex');
+   assert.equal((await call<{found:boolean}>('desk','lookup_licence',[licenceId])).found,false,'A timeout must not have created a permission');
+   const account=await call<{credit_atto:string}>('desk','get_account',[who.address]);
+   assert.ok(BigInt(account.credit_atto)>=BigInt(String(args[4])),'The consented fee must remain available before retry');
+   const archived=operation+':timeout:'+attempt;
+   assert.ok(state.signed[operation],'The original timed-out packet must remain recoverable');
+   state.transactions[archived]=state.transactions[operation];state.signed[archived]=state.signed[operation];
+   state.results[archived]={hash:state.transactions[operation],status:'FINALIZED',consensus:'TIMEOUT',execution:'timed out',state_applied:false,credit_preserved:true};
+   state.licenceTimeoutRetries[operation]=attempt;
+   delete state.transactions[operation];delete state.signed[operation];await save();
+   // The original transaction is terminal and no record/fee debit applied.
+   // Keep its packet forever; retry the same application request identifier
+   // with zero value. Funding, withdrawals and other payments never use this.
+   console.log('Submitting '+operation+' after a verified terminal timeout; original packet retained');
+  }
+ }
 }
 for(const account of [creator,lab]){
   if(await balance(account.address)<10000000000000000n)await reader.request({method:'sim_fundAccount',params:[account.address,100000000000000000]});
