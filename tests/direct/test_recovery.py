@@ -129,9 +129,13 @@ def test_prior_grant_is_assessed_under_its_original_terms(direct_deploy,direct_v
     monkeypatch.setattr(gl,'get_contract_at',lambda _:SimpleNamespace(view=lambda:view))
     c=court(direct_deploy,direct_vm,direct_alice)
     key=c.file_claim(work['work_id'],URL,HASH,'0x'+direct_bob.hex(),1767268800,2, output_base64=encoded(SOURCE), usage_json=USAGE)
-    licences['prior']={'decision':'APPROVE','holder':'0x'+direct_bob.hex(),'work_id':work['work_id'],'issued_at':1767268700,'terms_version':1,'use_class':'commercial','intended_use':'Commercial use with attribution.','clause':'C2','fee_atto':'100','reason':'Ignored non-authoritative old prose.'}
+    licences['prior']={'decision':'APPROVE','holder':'0x'+direct_bob.hex(),'work_id':work['work_id'],'issued_at':1767268700,'terms_version':1,'use_class':'commercial','intended_use':'Commercial use with attribution.','clause':'C2','fee_atto':'100','fee_released':True,'reason':'Ignored non-authoritative old prose.'}
     direct_vm.sender=direct_bob;fund(c,direct_vm,100);c.respond(key,'','prior',1767268800,2,'', usage_json=USAGE)
-    verdict(direct_vm,'DERIVATIVE_WITHIN_TERMS','NONE','LICENCE_TERMS');ruling=c.rule(key)
+    # A grant only satisfies a paid condition when the desk says the fee was
+    # released, so that flag has to reach the panel and its verification.
+    direct_vm.mock_llm(r'Tithe reasoning verification[\s\S]*"fee_released": true','{"supported":true}')
+    direct_vm.mock_llm(r'Tithe dispute panel[\s\S]*"fee_released": true',json.dumps(panel({'decision':'DERIVATIVE_WITHIN_TERMS','clause':'C2','damages_band':'NONE','terms_basis':'LICENCE_TERMS'})))
+    ruling=c.rule(key)
     assert direct_vm.run_validator()
     assert ruling['terms_version']==1 and ruling['terms_basis']=='LICENCE_TERMS'
     proposed={k:ruling[k] for k in RULING_KEYS}
