@@ -1,15 +1,15 @@
 {
   "network": "GenLayer Studio",
-  "checked_at": "2026-10-12T10:22:18.213Z",
+  "checked_at": "2026-10-13T12:18:32.452Z",
   "checks": {
     "registry": {
       "snapshot": {
         "count": 0,
         "revision": 0
       },
-      "address": "0x438FfB8a6DEf8ab4749214644367215430082bAd",
-      "transaction": "0xc3cb59bd4d084f24f032bc4fde6f76a2df97f1bfcd34d1dbc9f18472a96f62ea",
-      "source_sha256": "7529008cb7888bbd87d2cfd657e3e1c35922fe6350316390d9149082f4f8e269",
+      "address": "0x372614bd2aC87bCd91E21054c9f518BEa02e1632",
+      "transaction": "0x28cb8d456bad1d026bace100416ca618279291ff632f5391fed98275946b9e73",
+      "source_sha256": "c641222ddad12696ce659480c76b43e18eae172a9e33b5991e54a8ce1881a657",
       "source_matches": true,
       "schema_verified": true,
       "execution": "succeeded",
@@ -20,9 +20,9 @@
         "count": 0,
         "revision": 0
       },
-      "address": "0xB20CBB4F775F751c4d42fd538cc5e505fb19ab8C",
-      "transaction": "0xb4fd76b44184fcae1e8f29a26fae98625eb2ccc6dbbcbab1774d3b43c26cbdb8",
-      "source_sha256": "70b75ed801a1aa5c9dacadf4e3da42fa4ba782da476161158b8e68fa85a5038b",
+      "address": "0xBBc9889161ec20E4bd67f0b428ce9A9521F08c1A",
+      "transaction": "0x13589203fbc3b2225c6185524518c21efc6743f2931621fea3ad3806fca44a74",
+      "source_sha256": "a2d34561c8293f15a8579fbbef0450635b6b8f8c1f5a8af8c5ab3515750389bf",
       "source_matches": true,
       "schema_verified": true,
       "execution": "succeeded",
@@ -33,9 +33,9 @@
         "count": 0,
         "revision": 0
       },
-      "address": "0x8D82844599dA2385eaa6a164A7b9dD7726576C77",
-      "transaction": "0x186f2a37caa0e6a933f47cf2bb8068f63174e647de7ffe32ae5ed579666e2b2c",
-      "source_sha256": "375a88a30f47c15a4757ed7827506e379619e26fdc9343ef352ce8e638e24ff8",
+      "address": "0x31D6F8060245Bd1b229b502FF4AE3fD971dE2a99",
+      "transaction": "0xe7238dda808bf23e73d619f65a5aba28f1b9091e11045578613a61f579c4c537",
+      "source_sha256": "63a51cfd5c62048a3e156ba19a1bcc239face50febb00e701f8b9791d7ec6ba3",
       "source_matches": true,
       "schema_verified": true,
       "execution": "succeeded",

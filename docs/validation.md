@@ -12,7 +12,7 @@ Audit repairs checked on 13 October 2026. The previous live reports contain exac
 | Real Neon lease and recovery checks | Passed |
 | Isolated live Studio suite | Earlier release passed. Current revision: paid approval/native release and failed-action refund verified; intermediate court insufficient ruling finalized; final-source suite pending |
 | Official MCP client integration | Passed |
-| Deployment source comparison | Earlier release verified; application replacement for current source pending |
+| Deployment source comparison | Current application sources, execution, schemas, wiring and production defaults verified; zero records |
 | Application configuration | Default fee escrow, bonds, response, hearing and appeal windows verified |
 | Credential scan | No local credentials in working source, Git history or public build assets |
 | Runtime dependency audit | Zero high or critical advisories; 27 moderate upstream advisories |
