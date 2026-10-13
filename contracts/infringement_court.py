@@ -396,9 +396,15 @@ Non-USE verdicts require NONE damages. USE requires LOW (25 percent: minor attri
             try:
                 independent = assess()
             except Exception:
-                # Log no prompts, provider bodies, evidence or credentials.
-                print("Tithe validator: independent assessment unavailable or malformed")
-                return False
+                # A transient model, embedding or provider failure is not a
+                # judgement, so give the identical assessment one more attempt
+                # before refusing the round. Log no prompts, provider bodies,
+                # evidence or credentials.
+                try:
+                    independent = assess()
+                except Exception:
+                    print("Tithe validator: independent assessment unavailable or malformed")
+                    return False
             if not same_ruling(result.calldata, independent):
                 print("Tithe validator: substantive decision or unresolved facts disagree")
                 return False
