@@ -135,8 +135,19 @@ def test_prior_grant_is_assessed_under_its_original_terms(direct_deploy,direct_v
     # released, so that flag has to reach the panel and its verification.
     direct_vm.mock_llm(r'Tithe reasoning verification[\s\S]*"fee_released": true','{"supported":true}')
     direct_vm.mock_llm(r'Tithe dispute panel[\s\S]*"fee_released": true',json.dumps(panel({'decision':'DERIVATIVE_WITHIN_TERMS','clause':'C2','damages_band':'NONE','terms_basis':'LICENCE_TERMS'})))
+    original=gl.nondet.exec_prompt;verified=[]
+    def check_original_grant(prompt,**kwargs):
+        if prompt.startswith('Tithe reasoning verification.'):
+            evidence=json.loads(prompt[prompt.index('{'):])
+            assert evidence['selected_terms']==old
+            assert evidence['terms']==new
+            assert evidence['licence']['fee_released'] is True
+            verified.append(evidence)
+        return original(prompt,**kwargs)
+    monkeypatch.setattr(gl.nondet,'exec_prompt',check_original_grant)
     ruling=c.rule(key)
     assert direct_vm.run_validator()
+    assert len(verified)==1
     assert ruling['terms_version']==1 and ruling['terms_basis']=='LICENCE_TERMS'
     proposed={k:ruling[k] for k in RULING_KEYS}
     assert not direct_vm.run_validator(leader_result={**proposed,'terms_basis':'USE_TERMS'})
