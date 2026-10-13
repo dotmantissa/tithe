@@ -1,0 +1,298 @@
+{
+  "network": "GenLayer Studio",
+  "checked_at": "2026-10-13T13:13:39.814Z",
+  "courts": [
+    {
+      "verification_run": "reviewer_v1",
+      "address": "0x204BEF60a000833A010a5174138C233eB547B9a7",
+      "source_sha256": "cc3acd2fa497d580a2fcc7a919f5782ec56c2a397507bcbc5fe7b8f4c0b2757b",
+      "claims": [
+        "9680bee206b0a7cc9f42cd8c6b5e394f741a54106f990b0bde0f55f34af227c6"
+      ],
+      "cleanup_verified_at": "2026-10-12T15:17:53.207Z",
+      "native_balance_atto": "0",
+      "transactions": [
+        {
+          "operation": "recover",
+          "hash": "0x73a4212d18735c2286c16b4c1d96a376270b3329b8de433b230c73ec5a292a3f",
+          "status": "FINALIZED",
+          "execution": "succeeded"
+        },
+        {
+          "operation": "creator",
+          "hash": "0x6e0fa2a372131248dfc92d20109d7efb3c6e5c49d24868ec3269dfc185e350b4",
+          "status": "FINALIZED",
+          "execution": "succeeded"
+        },
+        {
+          "operation": "respondent",
+          "hash": "0xa815a8db86b1cd7609352e35fefabdca9df578db5ff625aeb58c0b9d23de7118",
+          "status": "FINALIZED",
+          "execution": "succeeded"
+        }
+      ],
+      "withdrawals": [
+        {
+          "actor": "creator",
+          "received_atto": "100",
+          "withdrawal_transaction": "0x6e0fa2a372131248dfc92d20109d7efb3c6e5c49d24868ec3269dfc185e350b4",
+          "balance_delta_verified": true
+        },
+        {
+          "actor": "respondent",
+          "received_atto": "100",
+          "withdrawal_transaction": "0xa815a8db86b1cd7609352e35fefabdca9df578db5ff625aeb58c0b9d23de7118",
+          "balance_delta_verified": true
+        }
+      ]
+    },
+    {
+      "verification_run": "reviewer_v2",
+      "address": "0x72191bdB7c261AF6195aB784FaFb3060C96B6419",
+      "source_sha256": "2d4638689f345af8a94ed817145050c41bfd2a42829fbb86f7446623a4854805",
+      "claims": [
+        "e21e237b8344e53df145835fb0a69d7b2fa65b46a99f2a784272270227f7e73b"
+      ],
+      "cleanup_verified_at": "2026-10-12T15:24:56.134Z",
+      "native_balance_atto": "0",
+      "transactions": [
+        {
+          "operation": "recover",
+          "hash": "0x8dfec5197f55b80e2954ff3620eb710e2ef87d32db929dc62b75e973bc2c6761",
+          "status": "FINALIZED",
+          "execution": "succeeded"
+        },
+        {
+          "operation": "creator",
+          "hash": "0x496e86f1ca6a2dee13a84a0584050d05bdad52e0b755903efb30ae1300f59dca",
+          "status": "FINALIZED",
+          "execution": "succeeded"
+        },
+        {
+          "operation": "respondent",
+          "hash": "0x5064ccfe6dff57a1f7873ff32cc953dee96e817ca9b227271850139451528fc4",
+          "status": "FINALIZED",
+          "execution": "succeeded"
+        }
+      ],
+      "withdrawals": [
+        {
+          "actor": "creator",
+          "received_atto": "100",
+          "withdrawal_transaction": "0x496e86f1ca6a2dee13a84a0584050d05bdad52e0b755903efb30ae1300f59dca",
+          "balance_delta_verified": true
+        },
+        {
+          "actor": "respondent",
+          "received_atto": "100",
+          "withdrawal_transaction": "0x5064ccfe6dff57a1f7873ff32cc953dee96e817ca9b227271850139451528fc4",
+          "balance_delta_verified": true
+        }
+      ]
+    },
+    {
+      "verification_run": "reviewer_v3",
+      "address": "0x72bb63CDA1F7B06686fE0A26B17F0111Eedf9a0F",
+      "source_sha256": "197eb5008c9f884b5c6c0cc7279075f87a81b639863441be58cb5df9aad39ba3",
+      "claims": [
+        "5cca1fb97e5a3f4dc110ed7d6acaf9b85f8134ed1018979f124260865419ad82"
+      ],
+      "cleanup_verified_at": "2026-10-12T15:31:33.736Z",
+      "native_balance_atto": "0",
+      "transactions": [
+        {
+          "operation": "settle",
+          "hash": "0xdfcf0fea0ee452315932b0884e8e36deccf5f2c7163dcdc6ce5d03b962aa0ec0",
+          "status": "FINALIZED",
+          "execution": "succeeded"
+        },
+        {
+          "operation": "creator",
+          "hash": "0x0595a0d9823ae485fdb1f77afc44ac97cb683eed94a0cae61ccf0be14013645c",
+          "status": "FINALIZED",
+          "execution": "succeeded"
+        },
+        {
+          "operation": "respondent",
+          "hash": "0x08041b67fb295cd0d51a265b5a838ddf04b4bc3f5004ba2338026092a1d96a71",
+          "status": "FINALIZED",
+          "execution": "succeeded"
+        }
+      ],
+      "withdrawals": [
+        {
+          "actor": "creator",
+          "received_atto": "100",
+          "withdrawal_transaction": "0x0595a0d9823ae485fdb1f77afc44ac97cb683eed94a0cae61ccf0be14013645c",
+          "balance_delta_verified": true
+        },
+        {
+          "actor": "respondent",
+          "received_atto": "100",
+          "withdrawal_transaction": "0x08041b67fb295cd0d51a265b5a838ddf04b4bc3f5004ba2338026092a1d96a71",
+          "balance_delta_verified": true
+        }
+      ]
+    },
+    {
+      "verification_run": "reviewer_v4",
+      "address": "0xDd62BF0eaCeFcEbDc6Cd7D962B43Ec6fdD658Cb7",
+      "source_sha256": "c16dafac805084072e15d613915c71d177dd80efedaf2ec37a8c4ca9bf7b7133",
+      "claims": [
+        "5ceb3de56b393df183b17b79b70989399f52afd975a1efaf79b7945faf477dc3",
+        "6ff4c3a4ba710cc10786a89deda2e293216eae027962893338d565506fb5f9db"
+      ],
+      "cleanup_verified_at": "2026-10-13T09:42:40.388Z",
+      "native_balance_atto": "0",
+      "transactions": [
+        {
+          "operation": "settle:5ceb3de56b39",
+          "hash": "0x4458399c666100e86c86a06e21528091d3b7353623d35b6867b51b1eea250ef6",
+          "status": "FINALIZED",
+          "execution": "succeeded"
+        },
+        {
+          "operation": "recover:6ff4c3a4ba71",
+          "hash": "0x69fa7643023c74a663342b114d31f7a9dc0a04bda67876f5ca756b4c0452cadf",
+          "status": "FINALIZED",
+          "execution": "succeeded"
+        },
+        {
+          "operation": "creator",
+          "hash": "0xf13dd82dfbe65fbff8dc5b45aa33d4138bc4623fa79aef37946224d8c342a02a",
+          "status": "FINALIZED",
+          "execution": "succeeded"
+        },
+        {
+          "operation": "respondent",
+          "hash": "0x61d6e56138d50196a363a382e0b8987459e2984f3e47631ca75992b74da32f92",
+          "status": "FINALIZED",
+          "execution": "succeeded"
+        }
+      ],
+      "withdrawals": [
+        {
+          "actor": "creator",
+          "received_atto": "100",
+          "withdrawal_transaction": "0xf13dd82dfbe65fbff8dc5b45aa33d4138bc4623fa79aef37946224d8c342a02a",
+          "balance_delta_verified": true
+        },
+        {
+          "actor": "respondent",
+          "received_atto": "500",
+          "withdrawal_transaction": "0x61d6e56138d50196a363a382e0b8987459e2984f3e47631ca75992b74da32f92",
+          "balance_delta_verified": true
+        }
+      ]
+    },
+    {
+      "verification_run": "reviewer_v5",
+      "address": "0x02Af9cFDEBBFcbF84E021f132aF322abCbC25E3d",
+      "source_sha256": "fd818b5b35ea4adc62b6ae412af36ec1d05ff8813c4d9fa5e2385c9253d3f3db",
+      "claims": [
+        "7cc4a3968ed6ba3859812369f3cc5f37fb94dd661762fbdadc46704ab64d26d8",
+        "3bc0781e13ca21d0c08869670166fbe5110438706fa143f6fec371ad6e49a925"
+      ],
+      "cleanup_verified_at": "2026-10-13T09:46:15.814Z",
+      "native_balance_atto": "0",
+      "transactions": [
+        {
+          "operation": "settle:7cc4a3968ed6",
+          "hash": "0xde991d9a53c54ffe779837ff2f591599c00fb61b71ab47df9697e08940354ace",
+          "status": "FINALIZED",
+          "execution": "succeeded"
+        },
+        {
+          "operation": "recover:3bc0781e13ca",
+          "hash": "0x3400afdf57ffb0e86014343383cc544123a35e5f55959c601c78a338f8905d15",
+          "status": "FINALIZED",
+          "execution": "succeeded"
+        },
+        {
+          "operation": "creator",
+          "hash": "0x737f09016bbbeb519a1a1fb9b196ff2fa171697963d7ee982fedbd3098cb9625",
+          "status": "FINALIZED",
+          "execution": "succeeded"
+        },
+        {
+          "operation": "respondent",
+          "hash": "0x6e6315b3d8156f3f58c1167597de0d8a5b4525d8473bcc53390d43ac018a05db",
+          "status": "FINALIZED",
+          "execution": "succeeded"
+        }
+      ],
+      "withdrawals": [
+        {
+          "actor": "creator",
+          "received_atto": "100",
+          "withdrawal_transaction": "0x737f09016bbbeb519a1a1fb9b196ff2fa171697963d7ee982fedbd3098cb9625",
+          "balance_delta_verified": true
+        },
+        {
+          "actor": "respondent",
+          "received_atto": "500",
+          "withdrawal_transaction": "0x6e6315b3d8156f3f58c1167597de0d8a5b4525d8473bcc53390d43ac018a05db",
+          "balance_delta_verified": true
+        }
+      ]
+    },
+    {
+      "verification_run": "reviewer_v6",
+      "address": "0x5c640479DfCA8294831F3CAC43479926dE4e13ab",
+      "source_sha256": "fec54fe85f34396ca517679f79eaf29c4e6e1d7a475a6893a3fdbc29059c8421",
+      "claims": [
+        "762fd9f62339aa062c57e65285f576bbf981c9ee02fc72c7094cb97537bc6aa8",
+        "6363c33d4849c2b648dc55df637572ffb36f1124190d3fbd8f1755877bb37352",
+        "5c7a9eddacdd34239ff6da7d032c0facb320cdf9bd1882c393e542c03a429f12"
+      ],
+      "cleanup_verified_at": "2026-10-13T13:09:42.814Z",
+      "native_balance_atto": "0",
+      "transactions": [
+        {
+          "operation": "settle:762fd9f62339",
+          "hash": "0xb9b178601e4466255f70037de88e7d86fa4c6e5a301a9723b6cdde64d5ae929f",
+          "status": "FINALIZED",
+          "execution": "succeeded"
+        },
+        {
+          "operation": "recover:5c7a9eddacdd",
+          "hash": "0xe1119853a11ac78dad14386a0e941727af13bc97966d55aa8f7071715e994628",
+          "status": "FINALIZED",
+          "execution": "succeeded"
+        },
+        {
+          "operation": "creator",
+          "hash": "0x506d85a857ab484511303b88121ef6a4ec6f40a620295facd38db32f436bf3d7",
+          "status": "FINALIZED",
+          "execution": "succeeded"
+        },
+        {
+          "operation": "respondent",
+          "hash": "0x18050ad012d6a8184c98b6bdc46f54cfe37b519f45dbb997b192c88170583096",
+          "status": "FINALIZED",
+          "execution": "succeeded"
+        }
+      ],
+      "withdrawals": [
+        {
+          "actor": "creator",
+          "received_atto": "100",
+          "withdrawal_transaction": "0x506d85a857ab484511303b88121ef6a4ec6f40a620295facd38db32f436bf3d7",
+          "balance_delta_verified": true
+        },
+        {
+          "actor": "respondent",
+          "received_atto": "500",
+          "withdrawal_transaction": "0x18050ad012d6a8184c98b6bdc46f54cfe37b519f45dbb997b192c88170583096",
+          "balance_delta_verified": true
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "These are superseded isolated verification courts, separate from application contracts.",
+    "Failed hearings closed without invented verdicts; genuine prior rulings settled by their original rules.",
+    "Native withdrawals were checked against quoted credit and durable pre-withdrawal balance baselines during sequential cleanup.",
+    "The transaction checks and zero contract balances above were independently refreshed for this report."
+  ]
+}
