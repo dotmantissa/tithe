@@ -6,7 +6,7 @@ import { keccak256 } from 'viem';
 import { createClient } from 'genlayer-js';
 import { studionet } from 'genlayer-js/chains';
 import { TransactionHashVariant, TransactionStatus, type Hash, type CalldataEncodable } from 'genlayer-js/types';
-import { accountFor, executionSucceeded, normalize } from '../src/lib/chain';
+import { accountFor, executionSucceeded, normalize, operationState } from '../src/lib/chain';
 import type { Work, Licence, Claim } from '../src/lib/types';
 
 type State={contracts:Record<string,`0x${string}`>;transactions:Record<string,Hash>;signed:Record<string,`0x${string}`>;source?:{url:string;hash:string};results:Record<string,unknown>;baselines?:Record<string,string>;expectedWithdrawals?:Record<string,string>};
@@ -19,6 +19,10 @@ let state:State;
 try {state=JSON.parse(await readFile(statePath,'utf8'));}catch{state={contracts:{},transactions:{},signed:{},results:{}};}
 async function save(){await writeFile(statePath+'.tmp',JSON.stringify(state,null,2)+'\n',{mode:0o600});await rename(statePath+'.tmp',statePath);}
 const actorRun=process.env.STUDIO_TEST_ACTOR_RUN||run;if(!/^[a-zA-Z0-9_]{1,40}$/.test(actorRun))throw new Error('Invalid actor run');
+const grantAttempt=Number(process.env.STUDIO_TEST_GRANT_ATTEMPT||'1');
+if(!Number.isSafeInteger(grantAttempt)||grantAttempt<1||grantAttempt>20)throw new Error('Invalid grant attempt');
+const grantOperation=grantAttempt===1?'grant':'grant:'+grantAttempt;
+const grantRequest=(attempt:number)=>'studio-durable-grant-'+run+(attempt===1?'':'-retry-'+attempt);
 const creator=accountFor('tithe:integration:creator:'+actorRun),lab=accountFor('tithe:integration:lab:'+actorRun);
 class SavedForBroadcast extends Error {}
 function clientFor(who:typeof creator,operation:string){
@@ -152,10 +156,30 @@ await write('refuse:paid',lab,'desk','request_licence',[work.work_id,'Commercial
 licences=await call<Licence[]>('desk','list_licences',[0,50]);assert.equal(licences.find(l=>l.terms_version===2)?.decision,'REFUSE');
 if(!state.results['withdraw:refused:balance']){const before=await baseline('withdraw:refused',lab.address);await write('withdraw:refused',lab,'desk','withdraw');await receipt('withdraw:refused',true);assert.equal(await balance(lab.address)-before,100n);state.results['withdraw:refused:balance']={received_atto:'100'};await save();}
 const usedAt=current.terms.effective_at;
-await write('claim:grant',creator,'court','file_claim',[work.work_id,text.url,text.hash,lab.address,usedAt,2,'studio-durable-grant-'+run,text.base64,usage],100n);
-claims=await call<Claim[]>('court','list_claims',[0,50]);const grant=claims.find(c=>c.output_hash===text.hash)!;
-await write('respond:grant',lab,'court','respond',[grant.claim_id,'',paid.licence_id,usedAt,2,'','',usage],100n);
-await write('rule:grant',creator,'court','rule',[grant.claim_id]);
+// An interrupted isolated run can outlive its response window. Keep every old
+// packet and outcome; an explicit new attempt first closes each expired claim,
+// then uses a distinct request identifier on the same source-verified court.
+for(let attempt=1;attempt<grantAttempt;attempt++){
+ const oldId=hash(Buffer.from(work.work_id+':request:'+grantRequest(attempt)));
+ const old=await call<Claim>('court','get_claim',[oldId]);
+ const response='respond:'+(attempt===1?'grant':'grant:'+attempt);
+ if(state.transactions[response]&&!state.results[response]){
+  const tx=await reader.getTransaction({hash:state.transactions[response]});
+  assert.equal(operationState(tx),'FAILED','Prior response must finalize with failure before starting another attempt');
+  assert.equal(executionSucceeded(tx),false,'Only a failed expired response can be replaced');
+  state.results[response]={hash:state.transactions[response],status:'FINALIZED',execution:'expected rollback: expired response'};await save();
+ }
+ if(old.status==='AWAITING_RESPONSE'){
+  const clock=await call<{unix_seconds:number}>('registry','get_clock');
+  assert.ok(clock.unix_seconds>old.response_deadline,'Prior response window must expire');
+  await write('cancel:expired-grant:'+attempt,creator,'court','cancel_unanswered',[oldId]);
+ }
+ assert.equal((await call<Claim>('court','get_claim',[oldId])).status,'CLOSED_WITHOUT_RULING','Prior grant bond must be recovered');
+}
+await write('claim:'+grantOperation,creator,'court','file_claim',[work.work_id,text.url,text.hash,lab.address,usedAt,2,grantRequest(grantAttempt),text.base64,usage],100n);
+claims=await call<Claim[]>('court','list_claims',[0,50]);const grant=claims.find(c=>c.claim_id===hash(Buffer.from(work.work_id+':request:'+grantRequest(grantAttempt))))!;assert.ok(grant);
+await write('respond:'+grantOperation,lab,'court','respond',[grant.claim_id,'',paid.licence_id,usedAt,2,'','',usage],100n);
+await write('rule:'+grantOperation,creator,'court','rule',[grant.claim_id]);
 const grantRuling=await call<Claim>('court','get_claim',[grant.claim_id]);assert.equal(grantRuling.ruling?.decision,'DERIVATIVE_WITHIN_TERMS');assert.equal(grantRuling.ruling?.terms_basis,'LICENCE_TERMS');assert.equal(grantRuling.ruling?.terms_version,1);
 // A separate still image work exercises actual decode, vision and visual signature embeddings.
 await write('register:image',creator,'registry','register_work',[image.url,image.hash,'All copying and derivative uses of this image are permitted without attribution.','{"research":"0"}','research','Isolated still image verification',image.base64]);
@@ -169,7 +193,7 @@ await write('rule:image',creator,'court','rule',[visualClaim.claim_id]);
 const visualRuling=await call<Claim>('court','get_claim',[visualClaim.claim_id]);assert.equal(visualRuling.ruling?.decision,'DERIVATIVE_WITHIN_TERMS');assert.equal(visualRuling.ruling?.damages_band,'NONE');
 // No grant is supplied for this prohibited copy; the exact band drives real settlement.
 await write('claim:prohibited',creator,'court','file_claim',[work.work_id,text.url,text.hash,lab.address,usedAt,2,'studio-prohibited-copy-'+run,text.base64,usage],100n);
-claims=await call<Claim[]>('court','list_claims',[0,50]);const prohibitedClaim=claims.find(c=>c.work_id===work.work_id&&c.claim_id!==grant.claim_id&&c.output_hash===text.hash)!;
+claims=await call<Claim[]>('court','list_claims',[0,50]);const prohibitedClaim=claims.find(c=>c.claim_id===hash(Buffer.from(work.work_id+':request:studio-prohibited-copy-'+run)))!;assert.ok(prohibitedClaim);
 await write('respond:prohibited',lab,'court','respond',[prohibitedClaim.claim_id,'','',usedAt,2,'','',usage],100n);
 await write('rule:prohibited',creator,'court','rule',[prohibitedClaim.claim_id]);
 const prohibitedRuling=await call<Claim>('court','get_claim',[prohibitedClaim.claim_id]);assert.equal(prohibitedRuling.ruling?.decision,'USE');assert.ok(['LOW','MEDIUM','HIGH'].includes(prohibitedRuling.ruling!.damages_band));
