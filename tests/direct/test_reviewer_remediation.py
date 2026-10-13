@@ -91,6 +91,31 @@ def test_matching_verdict_cannot_smuggle_unsupported_factual_reasoning(direct_de
     assert not sys.modules[c.__module__].valid_ruling(candidate)
 
 
+@pytest.mark.parametrize('failures,decision,band,supported,accepted',[
+    (1,'USE','HIGH',True,True),
+    (2,'USE','HIGH',True,False),
+    (1,'NO_USE','NONE',True,False),
+    (1,'USE','HIGH',False,False),
+])
+def test_interrupted_validator_still_requires_independent_agreement_and_supported_reasoning(direct_deploy,direct_vm,direct_alice,direct_bob,external_views,monkeypatch,failures,decision,band,supported,accepted):
+    work,_=external_views;c,key=ready(direct_deploy,direct_vm,direct_alice,direct_bob,work)
+    mock_ruling(direct_vm);c.rule(key)
+    from genlayer import gl
+    assessments=[]
+    def answer_after_interruption(prompt,**kwargs):
+        if prompt.startswith('Tithe dispute panel.'):
+            assessments.append(prompt)
+            if len(assessments)<=failures:
+                raise RuntimeError('Synthetic temporary assessment interruption')
+            return panel({'decision':decision,'clause':'C2','damages_band':band})
+        if prompt.startswith('Tithe reasoning verification.'):
+            return {'supported':supported}
+        pytest.fail('Unexpected external call')
+    monkeypatch.setattr(gl.nondet,'exec_prompt',answer_after_interruption)
+    assert direct_vm.run_validator() is accepted
+    assert len(assessments)==2 and assessments[0]==assessments[1]
+
+
 def test_review_ground_commitment_and_opposing_window(direct_deploy,direct_vm,direct_alice,direct_bob,direct_charlie,external_views):
     work,_=external_views;c,key=ready(direct_deploy,direct_vm,direct_alice,direct_bob,work)
     mock_ruling(direct_vm);c.rule(key);fund(c,direct_vm,200)
